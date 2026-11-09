@@ -94,14 +94,25 @@ export const SCALE_LERP = 18
 
 // Shake is given in pixels here and converted where Phaser wants a
 // fraction of the screen width.
-export const SHAKE_LAND = 4
-export const SHAKE_LAND_MS = 120
+export const SHAKE_LAND = 2
+export const SHAKE_LAND_MS = 80
 export const SHAKE_DASH = 2
 export const SHAKE_DASH_MS = 80
 
-// Below this landing speed the touchdown is soft and does not shake.
-// A full jump lands at about 710, a small hop at about 250.
-export const LAND_HARD_SPEED = 500
+// Only a real drop shakes: the fall has to be longer than this, measured
+// from the highest point since leaving the ground. A full jump drops about
+// 2.6 tiles back to where it started, so jumping never shakes.
+export const SHAKE_LAND_TILES = 4
+
+// --- Step 7b: camera ---
+// Phaser applies its follow lerp once per frame rather than per second, so
+// the look-ahead uses the same factor to move with it rather than against.
+export const CAM_LERP = 0.12
+export const CAM_LOOK_AHEAD = 80
+export const CAM_DEADZONE_Y = 60
+// A sliver of horizontal deadzone: zero would be ignored, and anything
+// wider would make the look-ahead fight it.
+export const CAM_DEADZONE_X = 1
 
 export const PARTICLES_LAND = 8
 export const PARTICLES_DASH = 10

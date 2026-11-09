@@ -8,7 +8,7 @@ import { Particles } from '../Particles.ts'
 import { Player } from '../Player.ts'
 import { level1 } from '../levels/level1.ts'
 import {
-  LAND_HARD_SPEED,
+  SHAKE_LAND_TILES,
   MAX_DT_MS,
   PARTICLES_DASH,
   PARTICLES_FOLD,
@@ -64,6 +64,7 @@ export class GameScene extends Phaser.Scene {
     if (this.controls.resetPressed) this.respawn()
 
     this.player.update(dt, this.controls, this.level.solids)
+    this.cam.update(this.player.facing)
     this.level.claim(this.player.x)
     this.react()
     // The dash hitstop freezes the player; hold the effects too, so the
@@ -98,8 +99,9 @@ export class GameScene extends Phaser.Scene {
     if (p.justLanded) {
       this.audio.land()
       this.particles.burst(p.x, foot, PARTICLES_LAND)
-      // Only a real drop shakes; stepping off a kerb should not.
-      if (p.landSpeed >= LAND_HARD_SPEED) {
+      // Only a real drop shakes. Measured in tiles fallen, so a jump that
+      // lands back where it started never does.
+      if (p.fallDrop > SHAKE_LAND_TILES * TILE) {
         this.cam.shake(SHAKE_LAND, SHAKE_LAND_MS)
       }
     }

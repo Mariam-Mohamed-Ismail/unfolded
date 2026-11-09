@@ -99,6 +99,9 @@ export class Player {
   private dashTail = 0
   private dashDir = 1
   private stepTimer = 0
+  // The highest point reached since last touching the ground, which is what
+  // a drop is measured from.
+  private apexY = 0
   private landHold = 0
   private dir = 0
   private freeze = 0
@@ -117,6 +120,8 @@ export class Player {
   justFootstep = false
   /** Downward speed at the moment of the last landing. */
   landSpeed = 0
+  /** How far the last landing fell, from the highest point reached. */
+  fallDrop = 0
 
   readonly view: PlayerView
 
@@ -135,6 +140,9 @@ export class Player {
     this.y = y
     this.view = new PlayerView(scene)
     this.grounded = this.onGround(solids)
+    // Must start here, not at zero, or the first fall is measured from the
+    // top of the world.
+    this.apexY = y
   }
 
   /** Internal timers, for the debug overlay only. */
@@ -186,6 +194,8 @@ export class Player {
     this.dashTail = 0
     this.dashDir = 1
     this.landHold = 0
+    this.apexY = y
+    this.fallDrop = 0
     this.airDashUsed = false
     this.state = 'fall'
     this.flat = false
@@ -211,6 +221,8 @@ export class Player {
     if (input.dir !== 0) this.facing = input.dir
     this.landHold = tick(this.landHold, dt)
     this.tickFootsteps(dt)
+    if (this.grounded) this.apexY = this.y
+    else this.apexY = Math.min(this.apexY, this.y)
     if (this.grounded) this.airDashUsed = false
     this.updateForm(dt, input, solids)
     this.dashWait = tick(this.dashWait, dt)
@@ -554,6 +566,9 @@ export class Player {
         if (!wasGrounded) {
           this.justLanded = true
           this.landHold = LAND_HOLD
+          // Measured from the apex, not from take-off: a jump that lands
+          // where it started has only fallen its own height.
+          this.fallDrop = this.y - this.apexY
           // Captured before vy is zeroed, so the scene can tell a hard
           // landing from a gentle one.
           this.landSpeed = this.vy
