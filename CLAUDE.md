@@ -21,15 +21,20 @@ No test runner, linter, or formatter is configured — `npm run build` is the on
 
 ## State of the project
 
-This is the initial Vite scaffold (single commit, `85c1905`). `src/main.ts` still renders the stock Vite + TypeScript starter page by assigning `innerHTML` to `#app`, and `src/counter.ts` is the scaffold's demo counter. Both are placeholders meant to be replaced, not patterns to follow.
+`src/main.ts` boots a `Phaser.Game` into `#app`. Day 1 is the movement lane of level 1 (see `docs/day1-plan.md`); game code lives under `src/game/`, with scenes in `src/game/scenes/`.
 
-`phaser` (v4) is a declared dependency but is not imported anywhere yet. The intended shape of the project is a Phaser game mounted into `#app` from `index.html` → `src/main.ts`; expect that wiring (a `Phaser.Game` config, scene classes) to be the first real work. There is no `vite.config.ts`, so Vite defaults apply: project root is the repo root, `public/` is served at `/`, and `index.html` is the single entry point.
+**Phaser is 3.90.0** — use Phaser 3 APIs only. Two things about it constrain the code:
+
+- **Import it as `import * as Phaser from 'phaser'`.** The ESM build Vite resolves (`dist/phaser.esm.js`) has named exports and *no default export*, so `import Phaser from 'phaser'` compiles but is `undefined` at runtime.
+- **No physics system is enabled.** The game config has no `physics` key on purpose. The player controller is hand-written — it integrates its own velocity and resolves its own AABB collisions — so coyote time, jump buffering and variable jump height stay frame-exact. Do not reach for Arcade.
+
+There is no `vite.config.ts`, so Vite defaults apply: project root is the repo root, `public/` is served at `/`, and `index.html` is the single entry point.
 
 ## TypeScript configuration constraints
 
 `tsconfig.json` is bundler-mode and stricter than default in ways that change how code must be written:
 
-- **`allowImportingTsExtensions`** — relative imports of local modules include the extension (`./counter.ts`), as `src/main.ts` does. Keep that convention.
+- **`allowImportingTsExtensions`** — relative imports of local modules include the extension (`./game/constants.ts`), as `src/main.ts` does. Keep that convention.
 - **`verbatimModuleSyntax`** — type-only imports must be written `import type { ... }`; a plain `import` of a type will not be elided and breaks at runtime.
 - **`erasableSyntaxOnly`** — no enums, namespaces, parameter properties (`constructor(private x: T)`), or other syntax that emits runtime code. Relevant when writing Phaser scene classes: declare and assign fields explicitly in the constructor or `create()`.
 - **`noUnusedLocals` / `noUnusedParameters`** — unused bindings are build failures, not warnings.
