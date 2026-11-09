@@ -81,6 +81,7 @@ export class Player {
   justLanded = false
   justDashed = false
   justFolded = false
+  justStood = false
   /** Downward speed at the moment of the last landing. */
   landSpeed = 0
 
@@ -123,6 +124,7 @@ export class Player {
     this.justLanded = false
     this.justDashed = false
     this.justFolded = false
+    this.justStood = false
   }
 
   /** `dt` is in seconds. */
@@ -303,6 +305,7 @@ export class Player {
     }
     this.y = y
     this.flat = false
+    this.justStood = true
     this.view.setForm(false)
   }
 

@@ -75,6 +75,33 @@ export const PARTICLE_LIFE = 450
 export const PARTICLE_SIZE = 4
 export const PARTICLE_GRAVITY = 900
 
+// --- Step 8: sound ---
+// Everything is synthesised: a band of filtered noise per event, which
+// reads as paper rather than as a console. Frequencies in Hz, lengths in ms.
+export const SFX_VOLUME = 0.35
+
+export const SFX_JUMP_HZ = 1100
+export const SFX_JUMP_TONE_HZ = 320
+export const SFX_JUMP_MS = 90
+
+export const SFX_LAND_HZ = 900
+export const SFX_LAND_MS = 70
+
+export const SFX_DASH_FROM_HZ = 600
+export const SFX_DASH_TO_HZ = 2400
+export const SFX_DASH_MS = 130
+
+export const SFX_FOLD_HZ = 1800
+export const SFX_FOLD_MS = 45
+
+export const SFX_UNFOLD_FROM_HZ = 1200
+export const SFX_UNFOLD_TO_HZ = 2200
+export const SFX_UNFOLD_MS = 70
+
+export const SFX_RESPAWN_FROM_HZ = 1400
+export const SFX_RESPAWN_TO_HZ = 300
+export const SFX_RESPAWN_MS = 220
+
 // Safety clamp, not a feel knob: `delta` spikes to hundreds of ms after a tab
 // switch or a breakpoint, which would teleport the player through the floor in
 // a single frame.

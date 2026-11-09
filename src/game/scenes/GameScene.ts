@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser'
+import { Audio } from '../Audio.ts'
 import { Camera } from '../Camera.ts'
 import { Input } from '../Input.ts'
 import { Particles } from '../Particles.ts'
@@ -26,6 +27,7 @@ export class GameScene extends Phaser.Scene {
   private player!: Player
   private particles!: Particles
   private cam!: Camera
+  private audio!: Audio
 
   constructor() {
     super('GameScene')
@@ -45,6 +47,8 @@ export class GameScene extends Phaser.Scene {
     // After the player, so paper lands on top of the figure.
     this.particles = new Particles(this)
 
+    this.audio = new Audio()
+
     const width = Math.max(...level1.solids.map((s) => s.x + s.w))
     this.cam = new Camera(this, width)
     this.cam.follow(this.player.view.gfx)
@@ -56,6 +60,8 @@ export class GameScene extends Phaser.Scene {
     const dt = Math.min(delta, MAX_DT_MS) / 1000
 
     this.controls.update()
+    if (this.controls.mutePressed) this.audio.toggleMute()
+
     this.player.update(dt, this.controls, level1.solids)
     this.react()
     this.particles.update(dt)
@@ -63,6 +69,7 @@ export class GameScene extends Phaser.Scene {
     // Missing the gap drops you out of the world; put you back at the start.
     if (this.player.y > GAME_HEIGHT + TILE * 2) {
       this.player.reset(level1.spawn.x, level1.spawn.y - PLAYER_H / 2)
+      this.audio.respawn()
     }
   }
 
@@ -71,7 +78,10 @@ export class GameScene extends Phaser.Scene {
     const p = this.player
     const foot = p.footY()
 
+    if (p.justJumped) this.audio.jump()
+
     if (p.justLanded) {
+      this.audio.land()
       this.particles.burst(p.x, foot, PARTICLES_LAND)
       // Only a real drop shakes; stepping off a kerb should not.
       if (p.landSpeed >= LAND_HARD_SPEED) {
@@ -80,11 +90,17 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (p.justDashed) {
+      this.audio.dash()
       // Thrown backwards, away from the direction of travel.
       this.particles.burst(p.x, foot - 8, PARTICLES_DASH, -p.facing * 90)
       this.cam.shake(SHAKE_DASH, SHAKE_DASH_MS)
     }
 
-    if (p.justFolded) this.particles.burst(p.x, foot, PARTICLES_FOLD)
+    if (p.justFolded) {
+      this.audio.fold()
+      this.particles.burst(p.x, foot, PARTICLES_FOLD)
+    }
+
+    if (p.justStood) this.audio.unfold()
   }
 }

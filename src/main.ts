@@ -16,6 +16,9 @@ const config: Phaser.Types.Core.GameConfig = {
     height: GAME_HEIGHT,
   },
   scene: [GameScene],
+  // All sound is hand-built Web Audio in Audio.ts, so Phaser's sound
+  // manager would only be a second audio context doing nothing.
+  audio: { noAudio: true },
 }
 
 new Phaser.Game(config)
