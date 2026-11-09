@@ -1,0 +1,45 @@
+# CLAUDE.md
+   ## About this project
+   Unfolded: a 2D origami puzzle action platformer (HTML5, 7 days).
+   All art is drawn in code with Phaser Graphics, no image or audio files. All
+   sound is Web Audio. Every tuning number lives in src/game/constants.ts.
+   Keep files small (Player, Input, Camera, Audio, Particles). After each task,
+   explain what you changed. Don't add features I didn't ask for.
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+npm run dev      # Vite dev server with HMR
+npm run build    # tsc type-check (noEmit) then vite build -> dist/
+npm run preview  # serve the built dist/ locally
+npx tsc --noEmit # type-check only, without building
+```
+
+No test runner, linter, or formatter is configured — `npm run build` is the only correctness gate, and it fails on type errors before Vite ever runs.
+
+## State of the project
+
+This is the initial Vite scaffold (single commit, `85c1905`). `src/main.ts` still renders the stock Vite + TypeScript starter page by assigning `innerHTML` to `#app`, and `src/counter.ts` is the scaffold's demo counter. Both are placeholders meant to be replaced, not patterns to follow.
+
+`phaser` (v4) is a declared dependency but is not imported anywhere yet. The intended shape of the project is a Phaser game mounted into `#app` from `index.html` → `src/main.ts`; expect that wiring (a `Phaser.Game` config, scene classes) to be the first real work. There is no `vite.config.ts`, so Vite defaults apply: project root is the repo root, `public/` is served at `/`, and `index.html` is the single entry point.
+
+## TypeScript configuration constraints
+
+`tsconfig.json` is bundler-mode and stricter than default in ways that change how code must be written:
+
+- **`allowImportingTsExtensions`** — relative imports of local modules include the extension (`./counter.ts`), as `src/main.ts` does. Keep that convention.
+- **`verbatimModuleSyntax`** — type-only imports must be written `import type { ... }`; a plain `import` of a type will not be elided and breaks at runtime.
+- **`erasableSyntaxOnly`** — no enums, namespaces, parameter properties (`constructor(private x: T)`), or other syntax that emits runtime code. Relevant when writing Phaser scene classes: declare and assign fields explicitly in the constructor or `create()`.
+- **`noUnusedLocals` / `noUnusedParameters`** — unused bindings are build failures, not warnings.
+- **`noEmit`** — `tsc` only checks; Vite/esbuild does the transpiling. `include` is `["src"]`, so files outside `src/` are never type-checked.
+
+## Assets
+
+Two distinct asset paths, and the choice matters for Phaser:
+
+- `src/assets/*` — imported in code (`import heroImg from './assets/hero.png'`), hashed and bundled by Vite.
+- `public/*` — copied verbatim, referenced by absolute URL (`/icons.svg`), no hashing.
+
+Phaser loaders (`this.load.image(...)`) take runtime URL strings, so game assets generally belong in `public/` unless the URL comes from a Vite import.
