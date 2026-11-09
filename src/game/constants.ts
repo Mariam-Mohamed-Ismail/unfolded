@@ -29,6 +29,12 @@ export const JUMP_CUT = 0.45
 export const COYOTE_MS = 90
 export const JUMP_BUFFER_MS = 110
 
+// --- Step 4: dash ---
+export const DASH_SPEED = 560
+export const DASH_TIME = 140
+export const DASH_COOLDOWN = 400
+export const DASH_FREEZE = 50
+
 // Safety clamp, not a feel knob: `delta` spikes to hundreds of ms after a tab
 // switch or a breakpoint, which would teleport the player through the floor in
 // a single frame.

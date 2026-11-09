@@ -15,6 +15,7 @@ export class Input {
   private leftKeys: Phaser.Input.Keyboard.Key[]
   private rightKeys: Phaser.Input.Keyboard.Key[]
   private jumpKeys: Phaser.Input.Keyboard.Key[]
+  private dashKeys: Phaser.Input.Keyboard.Key[]
 
   /** -1 left, 0 none, 1 right. Holding both cancels to 0. */
   dir = 0
@@ -28,6 +29,11 @@ export class Input {
   /** True for every frame jump is down. */
   jumpHeld = false
 
+  /** True only on the frame dash goes down. */
+  dashPressed = false
+
+  private dashHeld = false
+
   constructor(scene: Phaser.Scene) {
     const kb = scene.input.keyboard
     if (!kb) throw new Error('Input: no keyboard plugin on this scene')
@@ -35,6 +41,7 @@ export class Input {
     this.leftKeys = [kb.addKey('LEFT'), kb.addKey('A')]
     this.rightKeys = [kb.addKey('RIGHT'), kb.addKey('D')]
     this.jumpKeys = [kb.addKey('SPACE'), kb.addKey('W'), kb.addKey('UP')]
+    this.dashKeys = [kb.addKey('SHIFT'), kb.addKey('X')]
   }
 
   /** Call once per frame, before anything reads this. */
@@ -48,5 +55,9 @@ export class Input {
     this.jumpPressed = held && !this.jumpHeld
     this.jumpReleased = !held && this.jumpHeld
     this.jumpHeld = held
+
+    const dash = anyDown(this.dashKeys)
+    this.dashPressed = dash && !this.dashHeld
+    this.dashHeld = dash
   }
 }
