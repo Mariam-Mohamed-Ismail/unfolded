@@ -15,4 +15,3 @@ Step	What gets built	How you test it
 
 Commit after every step. If step 6 shows the gap is too easy or too hard, fix the number and write down why. Days 2 and 3 are the three puzzle rooms (1A fold, 1B slit puzzle, 1C wind), so don’t start those today.
 
-End of day: screenshot labelled “Day 1”, saved chat log, final commit, and your list of mistakes the AI made.
