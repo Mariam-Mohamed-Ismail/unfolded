@@ -4,6 +4,7 @@ import { Player } from '../Player.ts'
 import type { Solid } from '../Player.ts'
 import {
   COLOR_SOLID,
+  SLIT_H,
   GAME_HEIGHT,
   GAME_WIDTH,
   MAX_DT_MS,
@@ -31,6 +32,14 @@ export class GameScene extends Phaser.Scene {
       // A ledge to walk off, so coyote time is testable. Throwaway test
       // geometry; the real lane comes from levels/level1.ts at step 6.
       { x: TILE * 12, y: floorTop - TILE * 2, w: TILE * 4, h: TILE * 2 },
+      // A pillar standing on the floor with a SLIT_H gap left underneath it,
+      // so the only way past is folded. Also throwaway.
+      {
+        x: TILE * 22,
+        y: floorTop - TILE * 5,
+        w: TILE,
+        h: TILE * 5 - SLIT_H,
+      },
     ]
 
     for (const s of this.solids) {

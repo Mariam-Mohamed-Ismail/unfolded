@@ -29,6 +29,15 @@ export const JUMP_CUT = 0.45
 export const COYOTE_MS = 90
 export const JUMP_BUFFER_MS = 110
 
+// --- Step 5: flat form ---
+// Folding keeps the feet planted: the box shrinks downward from the head.
+export const PLAYER_FLAT_W = 30
+export const PLAYER_FLAT_H = 12
+
+// A slit must pass the flat form and stop the standing one, so it lives
+// between PLAYER_FLAT_H and PLAYER_H. Half a tile, for the grid.
+export const SLIT_H = 16
+
 // --- Step 4: dash ---
 export const DASH_SPEED = 560
 export const DASH_TIME = 140

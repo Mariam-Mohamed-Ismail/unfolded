@@ -18,9 +18,14 @@ import {
   JUMP_VELOCITY,
   MAX_FALL_SPEED,
   MAX_SPEED,
+  PLAYER_FLAT_H,
+  PLAYER_FLAT_W,
   PLAYER_H,
   PLAYER_W,
 } from './constants.ts'
+
+// Folding keeps the feet planted, so the centre moves by half the height lost.
+const FOLD_SHIFT = (PLAYER_H - PLAYER_FLAT_H) / 2
 
 // The constants are in milliseconds because that is the unit you tune in.
 // Converted once, here, so `dt` is the only unit inside the controller.
@@ -55,6 +60,7 @@ export class Player {
   vy = 0
   grounded = false
   facing = 1
+  flat = false
 
   private coyote = 0
   private buffer = 0
@@ -74,6 +80,7 @@ export class Player {
   update(dt: number, input: Input, solids: Solid[]): void {
     if (input.dir !== 0) this.facing = input.dir
     if (this.grounded) this.airDashUsed = false
+    this.updateForm(input, solids)
     this.dashWait = tick(this.dashWait, dt)
 
     // The buffer keeps ticking through freeze and dash, so a jump pressed
@@ -183,6 +190,10 @@ export class Player {
     if (this.grounded) this.coyote = COYOTE
     else this.coyote = tick(this.coyote, dt)
 
+    // No jumping while folded. The buffer keeps ticking, so a jump pressed
+    // under a slit fires the moment you stand up.
+    if (this.flat) return
+
     if (this.buffer > 0 && this.coyote > 0) {
       this.vy = JUMP_VELOCITY
       // Spend both: the buffer so one press is one jump, the coyote so a jump
@@ -199,6 +210,61 @@ export class Player {
     this.vy = Math.min(this.vy + g * dt, MAX_FALL_SPEED)
   }
 
+  // --- form ---
+
+  private updateForm(input: Input, solids: Solid[]): void {
+    if (input.flatHeld) {
+      if (!this.flat) this.goFlat(solids)
+    } else if (this.flat) {
+      this.tryStand(solids)
+    }
+  }
+
+  private goFlat(solids: Solid[]): void {
+    this.y += FOLD_SHIFT
+    this.flat = true
+    this.view.setSize(PLAYER_FLAT_W, PLAYER_FLAT_H)
+    // Flat is wider than standing, so folding beside a wall can end up
+    // inside it. Shove back out rather than refusing to fold, otherwise you
+    // could not fold while pressed against the pillar you mean to enter.
+    this.pushOutX(solids)
+  }
+
+  /**
+   * The headroom rule: unfold only where a standing box actually fits, so
+   * you can never stand up inside a slit and get stuck.
+   */
+  private tryStand(solids: Solid[]): void {
+    const y = this.y - FOLD_SHIFT
+    for (const s of solids) {
+      if (this.boxOverlaps(s, this.x, y, PLAYER_W / 2, PLAYER_H / 2)) return
+    }
+    this.y = y
+    this.flat = false
+    this.view.setSize(PLAYER_W, PLAYER_H)
+  }
+
+  private pushOutX(solids: Solid[]): void {
+    for (const s of solids) {
+      if (!this.overlaps(s)) continue
+      const hw = this.halfW()
+      // Leave by whichever face is nearer.
+      const outLeft = this.x + hw - s.x
+      const outRight = s.x + s.w - (this.x - hw)
+      if (outLeft < outRight) this.x = s.x - hw
+      else this.x = s.x + s.w + hw
+      this.vx = 0
+    }
+  }
+
+  private halfW(): number {
+    return (this.flat ? PLAYER_FLAT_W : PLAYER_W) / 2
+  }
+
+  private halfH(): number {
+    return (this.flat ? PLAYER_FLAT_H : PLAYER_H) / 2
+  }
+
   // --- collision ---
 
   private moveX(dx: number, solids: Solid[]): void {
@@ -208,8 +274,8 @@ export class Player {
     for (const s of solids) {
       if (!this.overlaps(s)) continue
       // Snap flush to the face we hit, then kill the speed we carried in.
-      if (dx > 0) this.x = s.x - PLAYER_W / 2
-      else this.x = s.x + s.w + PLAYER_W / 2
+      if (dx > 0) this.x = s.x - this.halfW()
+      else this.x = s.x + s.w + this.halfW()
       this.vx = 0
     }
   }
@@ -224,10 +290,10 @@ export class Player {
     for (const s of solids) {
       if (!this.overlaps(s)) continue
       if (dy > 0) {
-        this.y = s.y - PLAYER_H / 2
+        this.y = s.y - this.halfH()
         this.grounded = true
       } else {
-        this.y = s.y + s.h + PLAYER_H / 2
+        this.y = s.y + s.h + this.halfH()
       }
       this.vy = 0
     }
@@ -241,13 +307,20 @@ export class Player {
     return false
   }
 
-  /** Touching exactly flush is not an overlap, so resting counts as clear. */
   private overlaps(s: Solid, x = this.x, y = this.y): boolean {
+    return this.boxOverlaps(s, x, y, this.halfW(), this.halfH())
+  }
+
+  /** Touching exactly flush is not an overlap, so resting counts as clear. */
+  private boxOverlaps(
+    s: Solid,
+    x: number,
+    y: number,
+    hw: number,
+    hh: number,
+  ): boolean {
     return (
-      x - PLAYER_W / 2 < s.x + s.w &&
-      x + PLAYER_W / 2 > s.x &&
-      y - PLAYER_H / 2 < s.y + s.h &&
-      y + PLAYER_H / 2 > s.y
+      x - hw < s.x + s.w && x + hw > s.x && y - hh < s.y + s.h && y + hh > s.y
     )
   }
 }

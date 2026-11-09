@@ -16,6 +16,7 @@ export class Input {
   private rightKeys: Phaser.Input.Keyboard.Key[]
   private jumpKeys: Phaser.Input.Keyboard.Key[]
   private dashKeys: Phaser.Input.Keyboard.Key[]
+  private flatKeys: Phaser.Input.Keyboard.Key[]
 
   /** -1 left, 0 none, 1 right. Holding both cancels to 0. */
   dir = 0
@@ -32,6 +33,9 @@ export class Input {
   /** True only on the frame dash goes down. */
   dashPressed = false
 
+  /** True for every frame the fold key is down. */
+  flatHeld = false
+
   private dashHeld = false
 
   constructor(scene: Phaser.Scene) {
@@ -42,6 +46,7 @@ export class Input {
     this.rightKeys = [kb.addKey('RIGHT'), kb.addKey('D')]
     this.jumpKeys = [kb.addKey('SPACE'), kb.addKey('W'), kb.addKey('UP')]
     this.dashKeys = [kb.addKey('SHIFT'), kb.addKey('X')]
+    this.flatKeys = [kb.addKey('DOWN'), kb.addKey('S')]
   }
 
   /** Call once per frame, before anything reads this. */
@@ -59,5 +64,7 @@ export class Input {
     const dash = anyDown(this.dashKeys)
     this.dashPressed = dash && !this.dashHeld
     this.dashHeld = dash
+
+    this.flatHeld = anyDown(this.flatKeys)
   }
 }
