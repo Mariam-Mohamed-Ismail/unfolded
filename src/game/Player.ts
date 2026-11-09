@@ -5,7 +5,10 @@ import {
   ACCEL,
   AIR_ACCEL,
   AIR_DECEL,
+  APEX_BAND,
   COYOTE_MS,
+  DASH_TAIL_MS,
+  DASH_TAIL_MULT,
   DASH_STRETCH_X,
   DASH_STRETCH_Y,
   DASH_COOLDOWN,
@@ -19,9 +22,11 @@ import {
   JUMP_CUT,
   JUMP_STRETCH_X,
   JUMP_STRETCH_Y,
+  IDLE_SPEED,
   JUMP_VELOCITY,
   LAND_SQUASH_X,
   LAND_SQUASH_Y,
+  LAND_STATE_MS,
   MAX_FALL_SPEED,
   MAX_SPEED,
   PLAYER_FLAT_H,
@@ -52,6 +57,21 @@ function tick(timer: number, dt: number): number {
   return left < EPS ? 0 : left
 }
 
+const DASH_TAIL = DASH_TAIL_MS / 1000
+const LAND_HOLD = LAND_STATE_MS / 1000
+
+/** The spec's nine states. */
+export type PlayerState =
+  | 'idle'
+  | 'run'
+  | 'skid'
+  | 'jumpUp'
+  | 'apex'
+  | 'fall'
+  | 'land'
+  | 'dash'
+  | 'flat'
+
 /** An axis-aligned solid, stored by its top-left corner. */
 export type Solid = { x: number; y: number; w: number; h: number }
 
@@ -68,8 +88,14 @@ export class Player {
   facing = 1
   flat = false
 
+  state: PlayerState = 'fall'
+
   private coyote = 0
   private buffer = 0
+  private dashTail = 0
+  private dashDir = 1
+  private landHold = 0
+  private dir = 0
   private freeze = 0
   private dashing = 0
   private dashWait = 0
@@ -106,17 +132,27 @@ export class Player {
 
   /** Internal timers, for the debug overlay only. */
   debugInfo(): {
+    state: PlayerState
     coyote: number
     buffer: number
     dashWait: number
     dashing: number
   } {
     return {
+      state: this.state,
       coyote: this.coyote,
       buffer: this.buffer,
       dashWait: this.dashWait,
       dashing: this.dashing,
     }
+  }
+
+  /**
+   * True during the dash hitstop. The scene holds its own effects still for
+   * the same window, so what you see is the whole game stopping.
+   */
+  frozen(): boolean {
+    return this.freeze > 0
   }
 
   /** Where the feet are. The view is drawn and scaled from this point. */
@@ -140,7 +176,11 @@ export class Player {
     this.freeze = 0
     this.dashing = 0
     this.dashWait = 0
+    this.dashTail = 0
+    this.dashDir = 1
+    this.landHold = 0
     this.airDashUsed = false
+    this.state = 'fall'
     this.flat = false
     this.view.setForm(false)
     this.clearEvents()
@@ -158,7 +198,9 @@ export class Player {
   /** `dt` is in seconds. */
   update(dt: number, input: Input, solids: Solid[]): void {
     this.clearEvents()
+    this.dir = input.dir
     if (input.dir !== 0) this.facing = input.dir
+    this.landHold = tick(this.landHold, dt)
     if (this.grounded) this.airDashUsed = false
     this.updateForm(input, solids)
     this.dashWait = tick(this.dashWait, dt)
@@ -170,37 +212,80 @@ export class Player {
     if (this.freeze > 0) {
       this.freeze = tick(this.freeze, dt)
       this.grounded = this.onGround(solids)
+      this.transition()
       this.syncView(dt)
       return
     }
 
     if (this.dashing > 0) {
       this.dash(dt, solids)
+      this.transition()
       this.syncView(dt)
       return
     }
 
     if (this.startDash(input)) {
+      // Count this frame as the first of the hitstop, rather than spending a
+      // whole extra frame getting there.
+      this.freeze = tick(this.freeze, dt)
+      this.transition()
       this.syncView(dt)
       return
     }
 
-    this.runX(dt, input.dir)
+    // The tail: speed is held, input ignored, but gravity and collision run
+    // as normal so you can still fall out of a dash.
+    if (this.dashTail > 0) {
+      this.dashTail = tick(this.dashTail, dt)
+      this.vx = DASH_SPEED * DASH_TAIL_MULT * this.dashDir
+    } else {
+      this.runX(dt, input.dir)
+    }
     this.jump(dt)
     this.gravity(dt)
 
     this.moveX(this.vx * dt, solids)
     this.moveY(this.vy * dt, solids)
 
+    this.transition()
     this.syncView(dt)
+  }
+
+  // --- state machine ---
+
+  /**
+   * Picks the state from physics that has already run this frame, so the
+   * machine describes the movement rather than driving it. Order is
+   * priority: the exclusive states win over the descriptive ones.
+   */
+  private transition(): void {
+    const next = this.pick()
+    if (next === this.state) return
+    EXIT[this.state]?.(this)
+    this.state = next
+    ENTER[next]?.(this)
+  }
+
+  private pick(): PlayerState {
+    if (this.flat) return 'flat'
+    if (this.freeze > 0 || this.dashing > 0 || this.dashTail > 0) return 'dash'
+
+    if (!this.grounded) {
+      if (Math.abs(this.vy) < APEX_BAND) return 'apex'
+      return this.vy < 0 ? 'jumpUp' : 'fall'
+    }
+
+    if (this.landHold > 0) return 'land'
+    // Pressing against your own momentum is a skid, which is where the
+    // DECEL number shows itself.
+    if (this.dir !== 0 && this.vx !== 0 && Math.sign(this.vx) !== this.dir) {
+      return 'skid'
+    }
+    return Math.abs(this.vx) < IDLE_SPEED && this.dir === 0 ? 'idle' : 'run'
   }
 
   /** Squash and stretch act on the drawing only; the hitbox never changes. */
   private syncView(dt: number): void {
-    if (this.justLanded) this.view.pulse(LAND_SQUASH_X, LAND_SQUASH_Y)
-    else if (this.justJumped) this.view.pulse(JUMP_STRETCH_X, JUMP_STRETCH_Y)
-    else if (this.justDashed) this.view.pulse(DASH_STRETCH_X, DASH_STRETCH_Y)
-
     this.view.update(dt, this.x, this.footY(), this.facing)
   }
 
@@ -215,6 +300,10 @@ export class Player {
 
     if (!this.grounded) this.airDashUsed = true
     this.justDashed = true
+    // Latch the direction now. Reading facing live would let you steer or
+    // even reverse a dash in flight by turning around.
+    this.dashDir = this.facing
+    this.dashTail = 0
     this.freeze = FREEZE
     this.dashing = DASH
     this.vx = 0
@@ -230,7 +319,7 @@ export class Player {
     this.dashing = tick(this.dashing, step)
 
     // Flat and gravity-free, so the line reads clearly.
-    this.vx = DASH_SPEED * this.facing
+    this.vx = DASH_SPEED * this.dashDir
     this.vy = 0
     this.moveX(this.vx * step, solids)
     // No vertical move happens, so ask the ground directly rather than
@@ -238,8 +327,11 @@ export class Player {
     this.grounded = this.onGround(solids)
 
     if (this.dashing === 0) {
-      this.vx = Phaser.Math.Clamp(this.vx, -MAX_SPEED, MAX_SPEED)
-      // The cooldown runs from the end of the dash, not the start.
+      // Not a clamp to MAX_SPEED any more: the spec keeps 40% of the dash
+      // speed for a moment afterwards.
+      this.vx = DASH_SPEED * DASH_TAIL_MULT * this.dashDir
+      this.dashTail = DASH_TAIL
+      // The cooldown runs from the end of the dash, not the end of the tail.
       this.dashWait = DASH_WAIT
     }
   }
@@ -387,6 +479,7 @@ export class Player {
         this.y = s.y - this.halfH()
         if (!wasGrounded) {
           this.justLanded = true
+          this.landHold = LAND_HOLD
           // Captured before vy is zeroed, so the scene can tell a hard
           // landing from a gentle one.
           this.landSpeed = this.vy
@@ -424,3 +517,17 @@ export class Player {
     )
   }
 }
+
+// Enter and exit hooks. Both run exactly once per entry, exit before enter.
+// The visual kick of a landing, a jump or a dash belongs here rather than
+// scattered through the physics.
+
+type Hook = (p: Player) => void
+
+const ENTER: Partial<Record<PlayerState, Hook>> = {
+  land: (p) => p.view.pulse(LAND_SQUASH_X, LAND_SQUASH_Y),
+  jumpUp: (p) => p.view.pulse(JUMP_STRETCH_X, JUMP_STRETCH_Y),
+  dash: (p) => p.view.pulse(DASH_STRETCH_X, DASH_STRETCH_Y),
+}
+
+const EXIT: Partial<Record<PlayerState, Hook>> = {}

@@ -38,11 +38,28 @@ export const PLAYER_FLAT_H = 12
 // between PLAYER_FLAT_H and PLAYER_H. Half a tile, for the grid.
 export const SLIT_H = 16
 
-// --- Step 4: dash ---
+// --- Step 4: dash (numbers from Docs/level 1 spec) ---
 export let DASH_SPEED = 560
-export const DASH_TIME = 140
-export const DASH_COOLDOWN = 400
-export const DASH_FREEZE = 50
+export const DASH_TIME = 150
+export const DASH_COOLDOWN = 350
+export const DASH_FREEZE = 40
+
+// After the dash proper, speed snaps to this fraction of DASH_SPEED and is
+// held there, ignoring input, for DASH_TAIL_MS. 0.4 x 560 = 224, which is
+// below MAX_SPEED, so the tail settles out of the dash rather than boosting.
+export const DASH_TAIL_MULT = 0.4
+export const DASH_TAIL_MS = 80
+
+// --- State machine ---
+// |vy| under this counts as the apex of a jump. Observational for now: the
+// spec also halves gravity inside the band, which would change jump feel.
+export const APEX_BAND = 60
+
+// Below this speed a grounded player reads as idle rather than running.
+export const IDLE_SPEED = 8
+
+// How long the land state holds after touchdown, matching the squash.
+export const LAND_STATE_MS = 90
 
 // --- Step 7: feel ---
 export const COLOR_PLAYER_LINE = 0x1f8a4c

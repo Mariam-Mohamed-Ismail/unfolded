@@ -72,7 +72,9 @@ export class GameScene extends Phaser.Scene {
 
     this.player.update(dt, this.controls, level1.solids)
     this.react()
-    this.particles.update(dt)
+    // The dash hitstop freezes the player; hold the effects too, so the
+    // whole picture stops rather than just the figure.
+    if (!this.player.frozen()) this.particles.update(dt)
 
     // Missing the gap drops you out of the world; put you back at the start.
     if (this.player.y > GAME_HEIGHT + TILE * 2) this.respawn()

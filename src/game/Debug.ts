@@ -93,7 +93,7 @@ export class Debug {
     const n2 = (v: number) => v.toFixed(1).padStart(7)
     const rows = [
       `x${n2(player.x)}  y${n2(player.y)}  vx${n2(player.vx)}  vy${n2(player.vy)}`,
-      `${player.grounded ? 'grounded' : 'airborne'}  ${player.flat ? 'flat    ' : 'standing'}  face ${player.facing > 0 ? '+' : '-'}  ${Math.round(fps)}fps`,
+      `${d.state.padEnd(7)} ${player.grounded ? 'grounded' : 'airborne'}  face ${player.facing > 0 ? '+' : '-'}  ${Math.round(fps)}fps`,
       `coyote ${d.coyote.toFixed(2)}  buffer ${d.buffer.toFixed(2)}  dash ${d.dashing.toFixed(2)}  cd ${d.dashWait.toFixed(2)}`,
       `audio ${a.context}  ${a.muted ? 'MUTED' : 'on'}  played ${a.played}`,
       '',
