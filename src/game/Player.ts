@@ -10,11 +10,10 @@ import {
   DASH_TAIL_MS,
   DASH_TAIL_MULT,
   FLAT_ENTRY_SPEED,
+  FOOTSTEP_MS,
   FLAT_FRICTION,
   FLAT_MAX_SPEED,
   FOLD_TIME_MS,
-  DASH_STRETCH_X,
-  DASH_STRETCH_Y,
   DASH_COOLDOWN,
   DASH_FREEZE,
   DASH_SPEED,
@@ -24,8 +23,6 @@ import {
   GRAVITY,
   JUMP_BUFFER_MS,
   JUMP_CUT,
-  JUMP_STRETCH_X,
-  JUMP_STRETCH_Y,
   IDLE_SPEED,
   JUMP_VELOCITY,
   LAND_SQUASH_X,
@@ -101,6 +98,7 @@ export class Player {
   private buffer = 0
   private dashTail = 0
   private dashDir = 1
+  private stepTimer = 0
   private landHold = 0
   private dir = 0
   private freeze = 0
@@ -115,6 +113,8 @@ export class Player {
   justDashed = false
   justFolded = false
   justStood = false
+  /** Raised each time a running foot comes down. */
+  justFootstep = false
   /** Downward speed at the moment of the last landing. */
   landSpeed = 0
 
@@ -192,7 +192,7 @@ export class Player {
     this.foldT = 0
     this.view.setForm(false)
     this.clearEvents()
-    this.view.update(0, x, this.footY(), this.facing)
+    this.view.update(0, this)
   }
 
   private clearEvents(): void {
@@ -201,6 +201,7 @@ export class Player {
     this.justDashed = false
     this.justFolded = false
     this.justStood = false
+    this.justFootstep = false
   }
 
   /** `dt` is in seconds. */
@@ -209,6 +210,7 @@ export class Player {
     this.dir = input.dir
     if (input.dir !== 0) this.facing = input.dir
     this.landHold = tick(this.landHold, dt)
+    this.tickFootsteps(dt)
     if (this.grounded) this.airDashUsed = false
     this.updateForm(dt, input, solids)
     this.dashWait = tick(this.dashWait, dt)
@@ -259,6 +261,24 @@ export class Player {
     this.syncView(dt)
   }
 
+  /**
+   * A step every FOOTSTEP_MS while actually running along the ground. The
+   * timer only turns while running, so it lands on the first step rather
+   * than firing the instant you start.
+   */
+  private tickFootsteps(dt: number): void {
+    const running = this.grounded && !this.flat && Math.abs(this.vx) > 20
+    if (!running) {
+      this.stepTimer = 0
+      return
+    }
+    this.stepTimer += dt
+    if (this.stepTimer >= FOOTSTEP_MS / 1000) {
+      this.stepTimer = 0
+      this.justFootstep = true
+    }
+  }
+
   // --- state machine ---
 
   /**
@@ -294,7 +314,7 @@ export class Player {
 
   /** Squash and stretch act on the drawing only; the hitbox never changes. */
   private syncView(dt: number): void {
-    this.view.update(dt, this.x, this.footY(), this.facing)
+    this.view.update(dt, this)
   }
 
   // --- dash ---
@@ -578,10 +598,11 @@ export class Player {
 
 type Hook = (p: Player) => void
 
+// Only the landing is a kick. Rising, falling and dashing hold a pose for
+// as long as the state lasts, so PlayerView reads those from the state
+// rather than being told once on entry.
 const ENTER: Partial<Record<PlayerState, Hook>> = {
   land: (p) => p.view.pulse(LAND_SQUASH_X, LAND_SQUASH_Y),
-  jumpUp: (p) => p.view.pulse(JUMP_STRETCH_X, JUMP_STRETCH_Y),
-  dash: (p) => p.view.pulse(DASH_STRETCH_X, DASH_STRETCH_Y),
 }
 
 const EXIT: Partial<Record<PlayerState, Hook>> = {}

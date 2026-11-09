@@ -11,7 +11,7 @@ export const PLAYER_H = 30
 // --- Colours (all art is drawn in code, no image files) ---
 export const COLOR_BG = 0xb9dfc1
 export const COLOR_SOLID = 0x1f8a4c
-export const COLOR_PLAYER = 0x5fae7e
+export const COLOR_PLAYER = 0x7fc49a
 
 // --- Step 2: running (not used yet) ---
 export let MAX_SPEED = 260
@@ -72,16 +72,25 @@ export const IDLE_SPEED = 8
 export const LAND_STATE_MS = 90
 
 // --- Step 7: feel ---
-export const COLOR_PLAYER_LINE = 0x1f8a4c
+export const COLOR_PLAYER_LINE = 0x1e8a4c
+export const PLAYER_OUTLINE = 2
 
 // Squash and stretch scale the drawing only, never the hitbox.
-export const LAND_SQUASH_X = 1.3
-export const LAND_SQUASH_Y = 0.7
-export const JUMP_STRETCH_X = 0.8
-export const JUMP_STRETCH_Y = 1.25
-export const DASH_STRETCH_X = 1.45
-export const DASH_STRETCH_Y = 0.7
-export const SQUASH_RECOVER = 120
+export const LAND_SQUASH_X = 1.2
+export const LAND_SQUASH_Y = 0.8
+export const SQUASH_RECOVER = 90
+
+// Rising and falling hold their stretch for as long as the state holds, so
+// these are targets rather than pulses. Widths keep the figure's volume.
+export const JUMP_STRETCH_X = 0.87
+export const JUMP_STRETCH_Y = 1.15
+export const FALL_STRETCH_X = 0.92
+export const FALL_STRETCH_Y = 1.1
+export const DASH_STRETCH_X = 1.4
+export const DASH_STRETCH_Y = 0.71
+
+// How fast the drawing settles onto whatever the current state wants.
+export const SCALE_LERP = 18
 
 // Shake is given in pixels here and converted where Phaser wants a
 // fraction of the screen width.
@@ -101,6 +110,35 @@ export const PARTICLE_SPEED = 170
 export const PARTICLE_LIFE = 450
 export const PARTICLE_SIZE = 4
 export const PARTICLE_GRAVITY = 900
+
+// --- Step 7a: procedural animation ---
+// Idle: a slow breath and an occasional shrug, so standing still is alive.
+export const IDLE_BREATH_HZ = 0.5
+export const IDLE_BREATH = 1.03
+export const IDLE_BOB_PX = 0.8
+export const SHRUG_EVERY_MS = 4200
+export const SHRUG_MS = 320
+export const SHRUG_DEG = 14
+
+// Run: the torso leans into it, legs swing, arms counter-swing. The cycle
+// is driven by speed, so the legs keep up with how fast you are going.
+export const RUN_LEAN_DEG = 8
+export const RUN_SWING_DEG = 26
+export const RUN_ARM_SWING_DEG = 18
+export const RUN_CYCLE_PX = 46
+
+// Falling lets the legs trail upward behind the body.
+export const FALL_LEG_TRAIL_DEG = 22
+
+// Dash leaves a trail of fading copies of the figure.
+export const AFTERIMAGE_EVERY_MS = 25
+export const AFTERIMAGE_FADE_MS = 180
+export const AFTERIMAGE_ALPHA = 0.35
+
+// A footstep every this far travelled, matching the spec's 0.28s cadence
+// at full run speed.
+export const FOOTSTEP_MS = 280
+export const PARTICLES_FOOTSTEP = 2
 
 // --- Step 8: sound ---
 // Everything is synthesised: a band of filtered noise per event, which

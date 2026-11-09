@@ -12,6 +12,7 @@ import {
   MAX_DT_MS,
   PARTICLES_DASH,
   PARTICLES_FOLD,
+  PARTICLES_FOOTSTEP,
   PARTICLES_LAND,
   SHAKE_DASH,
   SHAKE_DASH_MS,
@@ -116,5 +117,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (p.justStood) this.audio.unfold()
+
+    // Small shards kicked up as each foot comes down.
+    if (p.justFootstep) this.particles.burst(p.x, foot, PARTICLES_FOOTSTEP, -p.facing * 30)
   }
 }
