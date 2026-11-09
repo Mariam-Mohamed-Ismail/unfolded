@@ -3,18 +3,16 @@ import { Audio } from '../Audio.ts'
 import { Camera } from '../Camera.ts'
 import { Debug } from '../Debug.ts'
 import { Input } from '../Input.ts'
+import { Level } from '../Level.ts'
 import { Particles } from '../Particles.ts'
 import { Player } from '../Player.ts'
 import { level1 } from '../levels/level1.ts'
 import {
-  COLOR_SOLID,
-  GAME_HEIGHT,
   LAND_HARD_SPEED,
   MAX_DT_MS,
   PARTICLES_DASH,
   PARTICLES_FOLD,
   PARTICLES_LAND,
-  PLAYER_H,
   SHAKE_DASH,
   SHAKE_DASH_MS,
   SHAKE_LAND,
@@ -30,32 +28,26 @@ export class GameScene extends Phaser.Scene {
   private cam!: Camera
   private audio!: Audio
   private debug!: Debug
+  private level!: Level
 
   constructor() {
     super('GameScene')
   }
 
   create(): void {
-    for (const s of level1.solids) {
-      this.add.rectangle(s.x, s.y, s.w, s.h, COLOR_SOLID).setOrigin(0, 0)
-    }
+    this.level = new Level(level1)
+    this.level.draw(this)
 
     this.controls = new Input(this)
-    this.player = new Player(
-      this,
-      level1.spawn.x,
-      level1.spawn.y - PLAYER_H / 2,
-      level1.solids,
-    )
+    const start = this.level.startPoint()
+    this.player = new Player(this, start.x, start.y, this.level.solids)
     // After the player, so paper lands on top of the figure.
     this.particles = new Particles(this)
-
     this.audio = new Audio()
     // Last, so the overlay draws over everything else.
     this.debug = new Debug(this)
 
-    const width = Math.max(...level1.solids.map((s) => s.x + s.w))
-    this.cam = new Camera(this, width)
+    this.cam = new Camera(this, this.level.widthPx, this.level.heightPx)
     this.cam.follow(this.player.view.gfx)
   }
 
@@ -70,29 +62,28 @@ export class GameScene extends Phaser.Scene {
     this.debug.handle(this.controls)
     if (this.controls.resetPressed) this.respawn()
 
-    this.player.update(dt, this.controls, level1.solids)
+    this.player.update(dt, this.controls, this.level.solids)
+    this.level.claim(this.player.x)
     this.react()
     // The dash hitstop freezes the player; hold the effects too, so the
     // whole picture stops rather than just the figure.
     if (!this.player.frozen()) this.particles.update(dt)
 
-    // Missing the gap drops you out of the world; put you back at the start.
-    if (this.player.y > GAME_HEIGHT + TILE * 2) this.respawn()
+    // The lane's pit is safe, so this only catches running off the end of
+    // what has been built.
+    if (this.player.y > this.level.heightPx + TILE * 2) this.respawn()
 
     this.debug.update(
       this.player,
-      level1.solids,
+      this.level.solids,
       this.game.loop.actualFps,
       this.audio,
     )
   }
 
   private respawn(): void {
-    this.player.reset(
-      level1.spawn.x,
-      level1.spawn.y - PLAYER_H / 2,
-      level1.solids,
-    )
+    const at = this.level.respawnPoint()
+    this.player.reset(at.x, at.y, this.level.solids)
     this.audio.respawn()
   }
 
