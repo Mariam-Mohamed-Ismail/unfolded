@@ -18,6 +18,9 @@ export class Input {
   private dashKeys: Phaser.Input.Keyboard.Key[]
   private flatKeys: Phaser.Input.Keyboard.Key[]
   private muteKeys: Phaser.Input.Keyboard.Key[]
+  private debugKeys: Phaser.Input.Keyboard.Key[]
+  private resetKeys: Phaser.Input.Keyboard.Key[]
+  private panelKeys: Phaser.Input.Keyboard.Key[][]
 
   /** -1 left, 0 none, 1 right. Holding both cancels to 0. */
   dir = 0
@@ -42,6 +45,28 @@ export class Input {
 
   private muteHeld = false
 
+  /** True only on the frame F1 goes down. */
+  debugPressed = false
+
+  /** True only on the frame Backspace goes down. */
+  resetPressed = false
+
+  /**
+   * Debug panel edges: move the cursor, nudge by one step, nudge by ten.
+   * Deliberately not the arrow keys or Shift, which are movement and dash:
+   * the whole point is to retune while still playing.
+   */
+  panelPrev = false
+  panelNext = false
+  panelDown = false
+  panelUp = false
+  panelDownBig = false
+  panelUpBig = false
+
+  private debugHeld = false
+  private resetHeld = false
+  private panelHeld = [false, false, false, false, false, false]
+
   private dashHeld = false
 
   constructor(scene: Phaser.Scene) {
@@ -54,6 +79,16 @@ export class Input {
     this.dashKeys = [kb.addKey('SHIFT'), kb.addKey('X')]
     this.flatKeys = [kb.addKey('DOWN'), kb.addKey('S')]
     this.muteKeys = [kb.addKey('M')]
+    this.debugKeys = [kb.addKey('F1')]
+    this.resetKeys = [kb.addKey('BACKSPACE')]
+    this.panelKeys = [
+      [kb.addKey('COMMA')],
+      [kb.addKey('PERIOD')],
+      [kb.addKey('OPEN_BRACKET')],
+      [kb.addKey('CLOSED_BRACKET')],
+      [kb.addKey('MINUS')],
+      [kb.addKey('PLUS')],
+    ]
   }
 
   /** Call once per frame, before anything reads this. */
@@ -77,5 +112,26 @@ export class Input {
     const mute = anyDown(this.muteKeys)
     this.mutePressed = mute && !this.muteHeld
     this.muteHeld = mute
+
+    const debug = anyDown(this.debugKeys)
+    this.debugPressed = debug && !this.debugHeld
+    this.debugHeld = debug
+
+    const reset = anyDown(this.resetKeys)
+    this.resetPressed = reset && !this.resetHeld
+    this.resetHeld = reset
+
+    const edges: boolean[] = []
+    for (let i = 0; i < this.panelKeys.length; i++) {
+      const down = anyDown(this.panelKeys[i])
+      edges.push(down && !this.panelHeld[i])
+      this.panelHeld[i] = down
+    }
+    this.panelPrev = edges[0]
+    this.panelNext = edges[1]
+    this.panelDown = edges[2]
+    this.panelUp = edges[3]
+    this.panelDownBig = edges[4]
+    this.panelUpBig = edges[5]
   }
 }

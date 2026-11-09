@@ -30,6 +30,20 @@ No test runner, linter, or formatter is configured — `npm run build` is the on
 
 There is no `vite.config.ts`, so Vite defaults apply: project root is the repo root, `public/` is served at `/`, and `index.html` is the single entry point.
 
+## Tuning values are live
+
+Most of `constants.ts` is `export const`. The eight values the F1 panel
+edits (`JUMP_VELOCITY`, `GRAVITY`, `FALL_GRAVITY_MULT`, `JUMP_CUT`,
+`MAX_SPEED`, `ACCEL`, `DECEL`, `DASH_SPEED`) are `export let`, written
+only through `setTuning()`. ESM exports are live bindings, so reassigning
+one is seen by every importer, including in the production bundle.
+
+The rule that follows: **never cache a tunable at module load.** A
+`const X = SOME_TUNABLE * 2` at the top of a file freezes the value at
+import and the panel stops working for it. This is why `Player.ts` converts
+the millisecond timers to seconds where they are used rather than once at
+the top, and why those timers are not on the tunable list.
+
 ## TypeScript configuration constraints
 
 `tsconfig.json` is bundler-mode and stricter than default in ways that change how code must be written:

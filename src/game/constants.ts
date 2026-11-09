@@ -14,18 +14,18 @@ export const COLOR_SOLID = 0x1f8a4c
 export const COLOR_PLAYER = 0x5fae7e
 
 // --- Step 2: running (not used yet) ---
-export const MAX_SPEED = 260
-export const ACCEL = 2200
-export const DECEL = 2600
+export let MAX_SPEED = 260
+export let ACCEL = 2200
+export let DECEL = 2600
 export const AIR_ACCEL = 1600
 export const AIR_DECEL = 1200
 
 // --- Step 3: jumping (not used yet) ---
-export const JUMP_VELOCITY = -560
-export const GRAVITY = 1800
-export const FALL_GRAVITY_MULT = 1.6
+export let JUMP_VELOCITY = -560
+export let GRAVITY = 1800
+export let FALL_GRAVITY_MULT = 1.6
 export const MAX_FALL_SPEED = 900
-export const JUMP_CUT = 0.45
+export let JUMP_CUT = 0.45
 export const COYOTE_MS = 90
 export const JUMP_BUFFER_MS = 110
 
@@ -39,7 +39,7 @@ export const PLAYER_FLAT_H = 12
 export const SLIT_H = 16
 
 // --- Step 4: dash ---
-export const DASH_SPEED = 560
+export let DASH_SPEED = 560
 export const DASH_TIME = 140
 export const DASH_COOLDOWN = 400
 export const DASH_FREEZE = 50
@@ -106,3 +106,68 @@ export const SFX_RESPAWN_MS = 220
 // switch or a breakpoint, which would teleport the player through the floor in
 // a single frame.
 export const MAX_DT_MS = 1000 / 30
+
+// --- Step 9: live tuning ---
+// The eight values above are declared with `let` rather than `const` so the
+// F1 panel can change them while the game runs. ESM exports are live
+// bindings, so reassigning one here is seen by every module that imported
+// it. Only this module can write them, hence setTuning.
+//
+// Anything cached at import time would go stale, which is why the
+// millisecond timers are not in this list: Player converts those to seconds
+// where they are used, not once at module load.
+
+export type TuningKey =
+  | 'JUMP_VELOCITY'
+  | 'GRAVITY'
+  | 'FALL_GRAVITY_MULT'
+  | 'JUMP_CUT'
+  | 'MAX_SPEED'
+  | 'ACCEL'
+  | 'DECEL'
+  | 'DASH_SPEED'
+
+export type Tunable = {
+  key: TuningKey
+  step: number
+  min: number
+  max: number
+  decimals: number
+}
+
+export const TUNABLES: Tunable[] = [
+  { key: 'JUMP_VELOCITY', step: 10, min: -1200, max: -100, decimals: 0 },
+  { key: 'GRAVITY', step: 50, min: 200, max: 6000, decimals: 0 },
+  { key: 'FALL_GRAVITY_MULT', step: 0.05, min: 1, max: 4, decimals: 2 },
+  { key: 'JUMP_CUT', step: 0.05, min: 0, max: 1, decimals: 2 },
+  { key: 'MAX_SPEED', step: 10, min: 40, max: 900, decimals: 0 },
+  { key: 'ACCEL', step: 100, min: 200, max: 12000, decimals: 0 },
+  { key: 'DECEL', step: 100, min: 200, max: 12000, decimals: 0 },
+  { key: 'DASH_SPEED', step: 20, min: 100, max: 2000, decimals: 0 },
+]
+
+export function getTuning(key: TuningKey): number {
+  switch (key) {
+    case 'JUMP_VELOCITY': return JUMP_VELOCITY
+    case 'GRAVITY': return GRAVITY
+    case 'FALL_GRAVITY_MULT': return FALL_GRAVITY_MULT
+    case 'JUMP_CUT': return JUMP_CUT
+    case 'MAX_SPEED': return MAX_SPEED
+    case 'ACCEL': return ACCEL
+    case 'DECEL': return DECEL
+    case 'DASH_SPEED': return DASH_SPEED
+  }
+}
+
+export function setTuning(key: TuningKey, value: number): void {
+  switch (key) {
+    case 'JUMP_VELOCITY': JUMP_VELOCITY = value; break
+    case 'GRAVITY': GRAVITY = value; break
+    case 'FALL_GRAVITY_MULT': FALL_GRAVITY_MULT = value; break
+    case 'JUMP_CUT': JUMP_CUT = value; break
+    case 'MAX_SPEED': MAX_SPEED = value; break
+    case 'ACCEL': ACCEL = value; break
+    case 'DECEL': DECEL = value; break
+    case 'DASH_SPEED': DASH_SPEED = value; break
+  }
+}

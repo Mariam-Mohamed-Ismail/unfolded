@@ -93,6 +93,21 @@ export class Player {
     this.view = new PlayerView(scene)
   }
 
+  /** Internal timers, for the debug overlay only. */
+  debugInfo(): {
+    coyote: number
+    buffer: number
+    dashWait: number
+    dashing: number
+  } {
+    return {
+      coyote: this.coyote,
+      buffer: this.buffer,
+      dashWait: this.dashWait,
+      dashing: this.dashing,
+    }
+  }
+
   /** Where the feet are. The view is drawn and scaled from this point. */
   footY(): number {
     return this.y + this.halfH()
@@ -322,11 +337,11 @@ export class Player {
     }
   }
 
-  private halfW(): number {
+  halfW(): number {
     return (this.flat ? PLAYER_FLAT_W : PLAYER_W) / 2
   }
 
-  private halfH(): number {
+  halfH(): number {
     return (this.flat ? PLAYER_FLAT_H : PLAYER_H) / 2
   }
 

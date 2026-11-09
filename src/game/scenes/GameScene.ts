@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import { Audio } from '../Audio.ts'
 import { Camera } from '../Camera.ts'
+import { Debug } from '../Debug.ts'
 import { Input } from '../Input.ts'
 import { Particles } from '../Particles.ts'
 import { Player } from '../Player.ts'
@@ -28,6 +29,7 @@ export class GameScene extends Phaser.Scene {
   private particles!: Particles
   private cam!: Camera
   private audio!: Audio
+  private debug!: Debug
 
   constructor() {
     super('GameScene')
@@ -48,6 +50,8 @@ export class GameScene extends Phaser.Scene {
     this.particles = new Particles(this)
 
     this.audio = new Audio()
+    // Last, so the overlay draws over everything else.
+    this.debug = new Debug(this)
 
     const width = Math.max(...level1.solids.map((s) => s.x + s.w))
     this.cam = new Camera(this, width)
@@ -61,16 +65,23 @@ export class GameScene extends Phaser.Scene {
 
     this.controls.update()
     if (this.controls.mutePressed) this.audio.toggleMute()
+    if (this.controls.debugPressed) this.debug.toggle()
+    this.debug.handle(this.controls)
+    if (this.controls.resetPressed) this.respawn()
 
     this.player.update(dt, this.controls, level1.solids)
     this.react()
     this.particles.update(dt)
 
     // Missing the gap drops you out of the world; put you back at the start.
-    if (this.player.y > GAME_HEIGHT + TILE * 2) {
-      this.player.reset(level1.spawn.x, level1.spawn.y - PLAYER_H / 2)
-      this.audio.respawn()
-    }
+    if (this.player.y > GAME_HEIGHT + TILE * 2) this.respawn()
+
+    this.debug.update(this.player, level1.solids, this.game.loop.actualFps)
+  }
+
+  private respawn(): void {
+    this.player.reset(level1.spawn.x, level1.spawn.y - PLAYER_H / 2)
+    this.audio.respawn()
   }
 
   /** Turns what the controller did this frame into things you can see. */
