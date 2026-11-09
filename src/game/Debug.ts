@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser'
+import type { Audio } from './Audio.ts'
 import type { Input } from './Input.ts'
 import type { Player, Solid } from './Player.ts'
 import { TUNABLES, getTuning, setTuning } from './constants.ts'
@@ -60,10 +61,10 @@ export class Debug {
     setTuning(t.key, snapped)
   }
 
-  update(player: Player, solids: Solid[], fps: number): void {
+  update(player: Player, solids: Solid[], fps: number, audio: Audio): void {
     if (!this.visible) return
     this.drawBoxes(player, solids)
-    this.text.setText(this.lines(player, fps))
+    this.text.setText(this.lines(player, fps, audio))
   }
 
   private apply(): void {
@@ -86,13 +87,15 @@ export class Debug {
     this.gfx.strokeRect(player.x - hw, player.y - hh, hw * 2, hh * 2)
   }
 
-  private lines(player: Player, fps: number): string {
+  private lines(player: Player, fps: number, audio: Audio): string {
     const d = player.debugInfo()
+    const a = audio.state()
     const n2 = (v: number) => v.toFixed(1).padStart(7)
     const rows = [
       `x${n2(player.x)}  y${n2(player.y)}  vx${n2(player.vx)}  vy${n2(player.vy)}`,
       `${player.grounded ? 'grounded' : 'airborne'}  ${player.flat ? 'flat    ' : 'standing'}  face ${player.facing > 0 ? '+' : '-'}  ${Math.round(fps)}fps`,
       `coyote ${d.coyote.toFixed(2)}  buffer ${d.buffer.toFixed(2)}  dash ${d.dashing.toFixed(2)}  cd ${d.dashWait.toFixed(2)}`,
+      `audio ${a.context}  ${a.muted ? 'MUTED' : 'on'}  played ${a.played}`,
       '',
     ]
 

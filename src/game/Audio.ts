@@ -47,6 +47,29 @@ export class Audio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private noise: AudioBuffer | null = null
+  private played = 0
+
+  /**
+   * Open the context from a real gesture handler. Creating it from inside
+   * the game loop usually works, because user activation is sticky, but a
+   * gesture handler is the case browsers actually guarantee. Both listeners
+   * are one-shot and wake() is idempotent.
+   */
+  constructor() {
+    if (typeof window === 'undefined') return
+    const unlock = () => this.wake()
+    window.addEventListener('pointerdown', unlock, { once: true })
+    window.addEventListener('keydown', unlock, { once: true })
+  }
+
+  /** For the F1 overlay: what the audio is actually doing. */
+  state(): { context: string; muted: boolean; played: number } {
+    return {
+      context: this.ctx ? this.ctx.state : 'not created',
+      muted: this.muted,
+      played: this.played,
+    }
+  }
 
   jump(): void {
     // A puff of air plus a hint of pitch, so a jump has a note and a landing
@@ -134,8 +157,11 @@ export class Audio {
   ): void {
     const ctx = this.wake()
     if (!ctx || !this.master || !this.noise) return
+    this.played++
 
-    const now = ctx.currentTime
+    // A suspended context has a frozen currentTime, so everything scheduled
+    // while it is waking would stack at the same instant. Nudge past it.
+    const now = Math.max(ctx.currentTime, 0)
     const dur = ms / 1000
 
     const src = ctx.createBufferSource()

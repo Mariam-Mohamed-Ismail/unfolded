@@ -77,7 +77,12 @@ export class GameScene extends Phaser.Scene {
     // Missing the gap drops you out of the world; put you back at the start.
     if (this.player.y > GAME_HEIGHT + TILE * 2) this.respawn()
 
-    this.debug.update(this.player, level1.solids, this.game.loop.actualFps)
+    this.debug.update(
+      this.player,
+      level1.solids,
+      this.game.loop.actualFps,
+      this.audio,
+    )
   }
 
   private respawn(): void {
