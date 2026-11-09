@@ -76,6 +76,28 @@ export class Player {
     this.view = scene.add.rectangle(x, y, PLAYER_W, PLAYER_H, COLOR_PLAYER)
   }
 
+  /** Drops the player back at a spawn point with no state carried over. */
+  reset(x: number, y: number): void {
+    this.x = x
+    this.y = y
+    this.vx = 0
+    this.vy = 0
+    this.grounded = false
+    this.facing = 1
+    // Stale timers would otherwise let you dash or jump out of the respawn.
+    this.coyote = 0
+    this.buffer = 0
+    this.freeze = 0
+    this.dashing = 0
+    this.dashWait = 0
+    this.airDashUsed = false
+    if (this.flat) {
+      this.flat = false
+      this.view.setSize(PLAYER_W, PLAYER_H)
+    }
+    this.view.setPosition(x, y)
+  }
+
   /** `dt` is in seconds. */
   update(dt: number, input: Input, solids: Solid[]): void {
     if (input.dir !== 0) this.facing = input.dir
