@@ -120,7 +120,10 @@ export class GameScene extends Phaser.Scene {
 
     if (p.justStood) this.audio.unfold()
 
-    // Small shards kicked up as each foot comes down.
-    if (p.justFootstep) this.particles.burst(p.x, foot, PARTICLES_FOOTSTEP, -p.facing * 30)
+    // A tick and a few shards as each foot comes down.
+    if (p.justFootstep) {
+      this.audio.footstep()
+      this.particles.burst(p.x, foot, PARTICLES_FOOTSTEP, -p.facing * 30)
+    }
   }
 }

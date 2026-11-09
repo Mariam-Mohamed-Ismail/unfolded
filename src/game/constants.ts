@@ -151,54 +151,64 @@ export const AFTERIMAGE_ALPHA = 0.35
 export const FOOTSTEP_MS = 280
 export const PARTICLES_FOOTSTEP = 2
 
-// --- Step 8: sound ---
-// Everything is synthesised: a band of filtered noise per event, which
-// reads as paper rather than as a console. Frequencies in Hz, lengths in ms.
+// --- Step 8: sound (voices from Docs/level 1 spec) ---
+// Everything is synthesised: white noise through a bandpass, which reads as
+// paper rather than as a console. Frequencies in Hz, lengths in ms.
+// A bandpass throws most of the noise away, so each voice carries a makeup
+// gain; re-solve them if you change a frequency, a length or a Q.
 export const SFX_VOLUME = 0.5
 
 // Each burst opens over this long instead of starting at full level. A noise
 // burst with no attack begins with a click that is louder than the burst.
 export const SFX_ATTACK_MS = 3
 
-// A bandpass on white noise throws most of the energy away, by roughly
-// sqrt(bandwidth), so every sound needs makeup gain to land at a normal
-// level. These were solved for about -22 dBFS RMS with peaks under -3.
-// Re-solve them if you change a frequency, a length or a Q.
+// Footstep: a 20ms tick. It repeats every 280ms while running, so it sits
+// well below everything else on purpose.
+export const SFX_STEP_HZ = 1600
+export const SFX_STEP_MS = 20
+export const SFX_STEP_Q = 1.5
+export const SFX_STEP_GAIN = 1.09
 
-export const SFX_JUMP_HZ = 1100
-export const SFX_JUMP_TONE_HZ = 320
-export const SFX_JUMP_MS = 90
-export const SFX_JUMP_Q = 1.2
-export const SFX_JUMP_GAIN = 2.73
-export const SFX_JUMP_TONE_GAIN = 0.25
+// Jump: a rising whoosh, low to high.
+export const SFX_JUMP_FROM_HZ = 300
+export const SFX_JUMP_TO_HZ = 1800
+export const SFX_JUMP_MS = 140
+export const SFX_JUMP_Q = 1
+export const SFX_JUMP_GAIN = 4.58
 
-export const SFX_LAND_HZ = 900
-export const SFX_LAND_MS = 70
+// Land: a low thud.
+export const SFX_LAND_FROM_HZ = 220
+export const SFX_LAND_TO_HZ = 90
+export const SFX_LAND_MS = 90
 export const SFX_LAND_Q = 1
-export const SFX_LAND_GAIN = 2.92
+export const SFX_LAND_GAIN = 5.11
 
-export const SFX_DASH_FROM_HZ = 600
-export const SFX_DASH_TO_HZ = 2400
-export const SFX_DASH_MS = 130
+// Dash: the spec's sweep, 800 to 3000 over 120ms.
+export const SFX_DASH_FROM_HZ = 800
+export const SFX_DASH_TO_HZ = 3000
+export const SFX_DASH_MS = 120
 export const SFX_DASH_Q = 1.5
-export const SFX_DASH_GAIN = 4.27
+export const SFX_DASH_GAIN = 3.75
 
-export const SFX_FOLD_HZ = 1800
-export const SFX_FOLD_MS = 45
-export const SFX_FOLD_Q = 2
-export const SFX_FOLD_GAIN = 2.92
+// Fold and unfold: a crinkle, which is several gated bursts rather than one
+// hit. Each burst picks a frequency somewhere in the band.
+export const SFX_CRINKLE_BURSTS = 5
+export const SFX_CRINKLE_BURST_MS = 12
+export const SFX_CRINKLE_SPREAD_MS = 70
+export const SFX_CRINKLE_Q = 3
+export const SFX_FOLD_FROM_HZ = 1800
+export const SFX_FOLD_TO_HZ = 3200
+export const SFX_FOLD_GAIN = 2.16
+export const SFX_UNFOLD_FROM_HZ = 1400
+export const SFX_UNFOLD_TO_HZ = 2600
+export const SFX_UNFOLD_GAIN = 2.51
 
-export const SFX_UNFOLD_FROM_HZ = 1200
-export const SFX_UNFOLD_TO_HZ = 2200
-export const SFX_UNFOLD_MS = 70
-export const SFX_UNFOLD_Q = 2
-export const SFX_UNFOLD_GAIN = 3.42
-
+// Respawn is not in the spec's list; kept so a reset is not silent.
 export const SFX_RESPAWN_FROM_HZ = 1400
 export const SFX_RESPAWN_TO_HZ = 300
 export const SFX_RESPAWN_MS = 220
 export const SFX_RESPAWN_Q = 1.2
-export const SFX_RESPAWN_GAIN = 2.44
+export const SFX_RESPAWN_GAIN = 2.28
 
 // Safety clamp, not a feel knob: `delta` spikes to hundreds of ms after a tab
 // switch or a breakpoint, which would teleport the player through the floor in

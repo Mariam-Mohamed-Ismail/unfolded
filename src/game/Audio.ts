@@ -1,33 +1,38 @@
 import {
   SFX_ATTACK_MS,
+  SFX_CRINKLE_BURSTS,
+  SFX_CRINKLE_BURST_MS,
+  SFX_CRINKLE_Q,
+  SFX_CRINKLE_SPREAD_MS,
   SFX_DASH_FROM_HZ,
   SFX_DASH_GAIN,
-  SFX_DASH_Q,
   SFX_DASH_MS,
+  SFX_DASH_Q,
   SFX_DASH_TO_HZ,
+  SFX_FOLD_FROM_HZ,
   SFX_FOLD_GAIN,
-  SFX_FOLD_HZ,
-  SFX_FOLD_MS,
-  SFX_FOLD_Q,
+  SFX_FOLD_TO_HZ,
+  SFX_JUMP_FROM_HZ,
   SFX_JUMP_GAIN,
-  SFX_JUMP_HZ,
   SFX_JUMP_MS,
   SFX_JUMP_Q,
-  SFX_JUMP_TONE_GAIN,
-  SFX_JUMP_TONE_HZ,
+  SFX_JUMP_TO_HZ,
+  SFX_LAND_FROM_HZ,
   SFX_LAND_GAIN,
-  SFX_LAND_HZ,
   SFX_LAND_MS,
   SFX_LAND_Q,
+  SFX_LAND_TO_HZ,
   SFX_RESPAWN_FROM_HZ,
   SFX_RESPAWN_GAIN,
   SFX_RESPAWN_MS,
   SFX_RESPAWN_Q,
   SFX_RESPAWN_TO_HZ,
+  SFX_STEP_GAIN,
+  SFX_STEP_HZ,
+  SFX_STEP_MS,
+  SFX_STEP_Q,
   SFX_UNFOLD_FROM_HZ,
   SFX_UNFOLD_GAIN,
-  SFX_UNFOLD_MS,
-  SFX_UNFOLD_Q,
   SFX_UNFOLD_TO_HZ,
   SFX_VOLUME,
 } from './constants.ts'
@@ -71,32 +76,32 @@ export class Audio {
     }
   }
 
+  /** A 20ms tick under each running footfall. */
+  footstep(): void {
+    this.noiseHit(SFX_STEP_HZ, SFX_STEP_HZ, SFX_STEP_MS, SFX_STEP_Q, SFX_STEP_GAIN)
+  }
+
+  /** A rising whoosh. */
   jump(): void {
-    // A puff of air plus a hint of pitch, so a jump has a note and a landing
-    // does not.
-    this.noiseHit(SFX_JUMP_HZ, SFX_JUMP_HZ, SFX_JUMP_MS, SFX_JUMP_Q, SFX_JUMP_GAIN)
-    this.tone(
-      SFX_JUMP_TONE_HZ,
-      SFX_JUMP_TONE_HZ * 1.6,
-      SFX_JUMP_MS,
-      SFX_JUMP_TONE_GAIN,
-    )
+    this.noiseHit(SFX_JUMP_FROM_HZ, SFX_JUMP_TO_HZ, SFX_JUMP_MS, SFX_JUMP_Q, SFX_JUMP_GAIN)
   }
 
+  /** A low thud. */
   land(): void {
-    this.noiseHit(SFX_LAND_HZ, SFX_LAND_HZ * 0.5, SFX_LAND_MS, SFX_LAND_Q, SFX_LAND_GAIN)
+    this.noiseHit(SFX_LAND_FROM_HZ, SFX_LAND_TO_HZ, SFX_LAND_MS, SFX_LAND_Q, SFX_LAND_GAIN)
   }
 
+  /** A bandpass sweep up through the spectrum. */
   dash(): void {
     this.noiseHit(SFX_DASH_FROM_HZ, SFX_DASH_TO_HZ, SFX_DASH_MS, SFX_DASH_Q, SFX_DASH_GAIN)
   }
 
   fold(): void {
-    this.noiseHit(SFX_FOLD_HZ, SFX_FOLD_HZ * 0.7, SFX_FOLD_MS, SFX_FOLD_Q, SFX_FOLD_GAIN)
+    this.crinkle(SFX_FOLD_FROM_HZ, SFX_FOLD_TO_HZ, SFX_FOLD_GAIN)
   }
 
   unfold(): void {
-    this.noiseHit(SFX_UNFOLD_FROM_HZ, SFX_UNFOLD_TO_HZ, SFX_UNFOLD_MS, SFX_UNFOLD_Q, SFX_UNFOLD_GAIN)
+    this.crinkle(SFX_UNFOLD_FROM_HZ, SFX_UNFOLD_TO_HZ, SFX_UNFOLD_GAIN)
   }
 
   respawn(): void {
@@ -124,6 +129,20 @@ export class Audio {
   }
 
   /**
+   * Paper does not make one sound, it makes a handful of tiny ones. Several
+   * short bursts scattered across a few tens of milliseconds, each picking a
+   * frequency somewhere in the band, reads as a crinkle where a single hit
+   * reads as a tap.
+   */
+  private crinkle(fromHz: number, toHz: number, gain: number): void {
+    for (let i = 0; i < SFX_CRINKLE_BURSTS; i++) {
+      const at = (i / SFX_CRINKLE_BURSTS) * (SFX_CRINKLE_SPREAD_MS / 1000)
+      const hz = fromHz + (toHz - fromHz) * Math.random()
+      this.noiseHit(hz, hz * 0.85, SFX_CRINKLE_BURST_MS, SFX_CRINKLE_Q, gain, at)
+    }
+  }
+
+  /**
    * Built on first use, not at startup: browsers refuse to start an
    * AudioContext until the page has been interacted with, and every sound
    * here follows a key press.
@@ -148,12 +167,14 @@ export class Audio {
     return this.ctx
   }
 
+  /** `delay` schedules the burst that far ahead, which is how a crinkle is built. */
   private noiseHit(
     fromHz: number,
     toHz: number,
     ms: number,
     q: number,
     gain: number,
+    delay = 0,
   ): void {
     const ctx = this.wake()
     if (!ctx || !this.master || !this.noise) return
@@ -161,7 +182,7 @@ export class Audio {
 
     // A suspended context has a frozen currentTime, so everything scheduled
     // while it is waking would stack at the same instant. Nudge past it.
-    const now = Math.max(ctx.currentTime, 0)
+    const now = Math.max(ctx.currentTime, 0) + delay
     const dur = ms / 1000
 
     const src = ctx.createBufferSource()
@@ -189,28 +210,5 @@ export class Audio {
     env.connect(this.master)
     src.start(now, Math.max(0, offset), dur)
     src.stop(now + dur)
-  }
-
-  private tone(fromHz: number, toHz: number, ms: number, gain: number): void {
-    const ctx = this.wake()
-    if (!ctx || !this.master) return
-
-    const now = ctx.currentTime
-    const dur = ms / 1000
-
-    const osc = ctx.createOscillator()
-    osc.type = 'triangle'
-    osc.frequency.setValueAtTime(fromHz, now)
-    osc.frequency.exponentialRampToValueAtTime(toHz, now + dur)
-
-    const env = ctx.createGain()
-    env.gain.setValueAtTime(SILENT, now)
-    env.gain.linearRampToValueAtTime(gain, now + Math.min(ATTACK, dur / 2))
-    env.gain.exponentialRampToValueAtTime(SILENT, now + dur)
-
-    osc.connect(env)
-    env.connect(this.master)
-    osc.start(now)
-    osc.stop(now + dur)
   }
 }
