@@ -40,10 +40,9 @@ import {
 const FOLD_RATE = 1000 / FOLD_TIME_MS
 
 // The constants are in milliseconds because that is the unit you tune in.
-// Converted once, here, so `dt` is the only unit inside the controller.
-const COYOTE = COYOTE_MS / 1000
-const JUMP_BUFFER = JUMP_BUFFER_MS / 1000
-const DASH = DASH_TIME / 1000
+// The three the F1 panel edits are converted where they are used, not here:
+// caching a tunable at module load freezes it and the panel silently stops
+// working for it. The rest are fixed, so caching them is safe.
 const DASH_WAIT = DASH_COOLDOWN / 1000
 const FREEZE = DASH_FREEZE / 1000
 
@@ -152,6 +151,8 @@ export class Player {
     buffer: number
     dashWait: number
     dashing: number
+    dashReady: boolean
+    airDashUsed: boolean
   } {
     return {
       state: this.state,
@@ -159,6 +160,8 @@ export class Player {
       buffer: this.buffer,
       dashWait: this.dashWait,
       dashing: this.dashing,
+      dashReady: this.dashReady(),
+      airDashUsed: this.airDashUsed,
     }
   }
 
@@ -331,14 +334,24 @@ export class Player {
 
   // --- dash ---
 
-  /** Begins the freeze that precedes the dash. True if a dash started. */
-  private startDash(input: Input): boolean {
-    if (!input.dashPressed) return false
-    // The spec allows no jump, dash or sword while folded.
+  /**
+   * Whether a dash would fire right now. The overlay reads this rather
+   * than guessing from the cooldown, which cannot see the air dash or the
+   * fold.
+   */
+  dashReady(): boolean {
+    // No jump, dash or sword while folded.
     if (this.flat) return false
     if (this.dashWait > 0) return false
     // One air dash per trip off the ground; landing clears it.
     if (!this.grounded && this.airDashUsed) return false
+    return true
+  }
+
+  /** Begins the freeze that precedes the dash. True if a dash started. */
+  private startDash(input: Input): boolean {
+    if (!input.dashPressed) return false
+    if (!this.dashReady()) return false
 
     if (!this.grounded) this.airDashUsed = true
     this.justDashed = true
@@ -347,7 +360,7 @@ export class Player {
     this.dashDir = this.facing
     this.dashTail = 0
     this.freeze = FREEZE
-    this.dashing = DASH
+    this.dashing = DASH_TIME / 1000
     this.vx = 0
     this.vy = 0
     return true
@@ -435,7 +448,7 @@ export class Player {
 
   private tickBuffer(dt: number, input: Input): void {
     // Set by the press edge only, so holding jump cannot refill it.
-    if (input.jumpPressed) this.buffer = JUMP_BUFFER
+    if (input.jumpPressed) this.buffer = JUMP_BUFFER_MS / 1000
     else this.buffer = tick(this.buffer, dt)
 
     // Letting go on the way up keeps 45% of the rise.
@@ -445,7 +458,7 @@ export class Player {
   private jump(dt: number): void {
     // Coyote refills while grounded and drains in the air, so it is already
     // full the moment you step off an edge.
-    if (this.grounded) this.coyote = COYOTE
+    if (this.grounded) this.coyote = COYOTE_MS / 1000
     else this.coyote = tick(this.coyote, dt)
 
     // No jumping while folded. The buffer keeps ticking, so a jump pressed

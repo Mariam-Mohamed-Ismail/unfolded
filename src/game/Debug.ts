@@ -2,7 +2,7 @@ import * as Phaser from 'phaser'
 import type { Audio } from './Audio.ts'
 import type { Input } from './Input.ts'
 import type { Player, Solid } from './Player.ts'
-import { TUNABLES, getTuning, setTuning } from './constants.ts'
+import { DASH_SPEED, DASH_TIME, TUNABLES, getTuning, setTuning } from './constants.ts'
 
 /**
  * F1 overlay: a state readout, the hitboxes the controller actually uses,
@@ -94,7 +94,11 @@ export class Debug {
     const rows = [
       `x${n2(player.x)}  y${n2(player.y)}  vx${n2(player.vx)}  vy${n2(player.vy)}`,
       `${d.state.padEnd(7)} ${player.grounded ? 'grounded' : 'airborne'}  face ${player.facing > 0 ? '+' : '-'}  ${Math.round(fps)}fps`,
-      `coyote ${d.coyote.toFixed(2)}  buffer ${d.buffer.toFixed(2)}  dash ${d.dashing.toFixed(2)}  cd ${d.dashWait.toFixed(2)}`,
+      `coyote ${d.coyote.toFixed(2)}  buffer ${d.buffer.toFixed(2)}`,
+      // Availability, not just the cooldown: the cooldown cannot see a
+      // spent air dash or a fold.
+      `dash ${d.dashReady ? 'READY' : 'no   '}  cd ${d.dashWait.toFixed(2)}  air ${d.airDashUsed ? 'spent' : 'ok'}  t ${d.dashing.toFixed(2)}`,
+      `dash reach ${Math.round((DASH_SPEED * DASH_TIME) / 1000)}px`,
       `audio ${a.context}  ${a.muted ? 'MUTED' : 'on'}  played ${a.played}`,
       '',
     ]

@@ -32,17 +32,18 @@ There is no `vite.config.ts`, so Vite defaults apply: project root is the repo r
 
 ## Tuning values are live
 
-Most of `constants.ts` is `export const`. The eight values the F1 panel
-edits (`JUMP_VELOCITY`, `GRAVITY`, `FALL_GRAVITY_MULT`, `JUMP_CUT`,
-`MAX_SPEED`, `ACCEL`, `DECEL`, `DASH_SPEED`) are `export let`, written
-only through `setTuning()`. ESM exports are live bindings, so reassigning
+Most of `constants.ts` is `export const`. The eleven values the F1 panel
+edits are `export let`, written only through `setTuning()`: `MAX_SPEED`,
+`GRAVITY`, `JUMP_VELOCITY`, `DASH_SPEED`, `DASH_TIME`, `COYOTE_MS`,
+`JUMP_BUFFER_MS`, `FALL_GRAVITY_MULT`, `JUMP_CUT`, `ACCEL`, `DECEL`. ESM exports are live bindings, so reassigning
 one is seen by every importer, including in the production bundle.
 
 The rule that follows: **never cache a tunable at module load.** A
 `const X = SOME_TUNABLE * 2` at the top of a file freezes the value at
-import and the panel stops working for it. This is why `Player.ts` converts
-the millisecond timers to seconds where they are used rather than once at
-the top, and why those timers are not on the tunable list.
+import and the panel stops working for it. This is why `Player.ts` converts `COYOTE_MS`,
+`JUMP_BUFFER_MS` and `DASH_TIME` to seconds where they are used rather
+than once at the top. `DASH_COOLDOWN`, `DASH_FREEZE` and the rest are not
+tunable, so caching those is safe.
 
 ## TypeScript configuration constraints
 

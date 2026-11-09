@@ -26,8 +26,8 @@ export let GRAVITY = 1800
 export let FALL_GRAVITY_MULT = 1.6
 export const MAX_FALL_SPEED = 900
 export let JUMP_CUT = 0.45
-export const COYOTE_MS = 90
-export const JUMP_BUFFER_MS = 110
+export let COYOTE_MS = 90
+export let JUMP_BUFFER_MS = 110
 
 // --- Step 5: flat form (numbers from Docs/level 1 spec) ---
 // Folding keeps the feet planted: the box shrinks downward from the head.
@@ -50,7 +50,7 @@ export const FLAT_MAX_SPEED = 200
 
 // --- Step 4: dash (numbers from Docs/level 1 spec) ---
 export let DASH_SPEED = 560
-export const DASH_TIME = 150
+export let DASH_TIME = 150
 export const DASH_COOLDOWN = 350
 export const DASH_FREEZE = 40
 
@@ -226,14 +226,17 @@ export const MAX_DT_MS = 1000 / 30
 // where they are used, not once at module load.
 
 export type TuningKey =
-  | 'JUMP_VELOCITY'
+  | 'MAX_SPEED'
   | 'GRAVITY'
+  | 'JUMP_VELOCITY'
+  | 'DASH_SPEED'
+  | 'DASH_TIME'
+  | 'COYOTE_MS'
+  | 'JUMP_BUFFER_MS'
   | 'FALL_GRAVITY_MULT'
   | 'JUMP_CUT'
-  | 'MAX_SPEED'
   | 'ACCEL'
   | 'DECEL'
-  | 'DASH_SPEED'
 
 export type Tunable = {
   key: TuningKey
@@ -243,15 +246,21 @@ export type Tunable = {
   decimals: number
 }
 
+// The six the spec names come first; the rest are extras kept from before.
+// Dash distance is two knobs, speed and time, so the panel shows the
+// product as a read-out.
 export const TUNABLES: Tunable[] = [
-  { key: 'JUMP_VELOCITY', step: 10, min: -1200, max: -100, decimals: 0 },
+  { key: 'MAX_SPEED', step: 10, min: 40, max: 900, decimals: 0 },
   { key: 'GRAVITY', step: 50, min: 200, max: 6000, decimals: 0 },
+  { key: 'JUMP_VELOCITY', step: 10, min: -1200, max: -100, decimals: 0 },
+  { key: 'DASH_SPEED', step: 20, min: 100, max: 2000, decimals: 0 },
+  { key: 'DASH_TIME', step: 10, min: 40, max: 600, decimals: 0 },
+  { key: 'COYOTE_MS', step: 10, min: 0, max: 400, decimals: 0 },
+  { key: 'JUMP_BUFFER_MS', step: 10, min: 0, max: 400, decimals: 0 },
   { key: 'FALL_GRAVITY_MULT', step: 0.05, min: 1, max: 4, decimals: 2 },
   { key: 'JUMP_CUT', step: 0.05, min: 0, max: 1, decimals: 2 },
-  { key: 'MAX_SPEED', step: 10, min: 40, max: 900, decimals: 0 },
   { key: 'ACCEL', step: 100, min: 200, max: 12000, decimals: 0 },
   { key: 'DECEL', step: 100, min: 200, max: 12000, decimals: 0 },
-  { key: 'DASH_SPEED', step: 20, min: 100, max: 2000, decimals: 0 },
 ]
 
 export function getTuning(key: TuningKey): number {
@@ -264,6 +273,9 @@ export function getTuning(key: TuningKey): number {
     case 'ACCEL': return ACCEL
     case 'DECEL': return DECEL
     case 'DASH_SPEED': return DASH_SPEED
+    case 'DASH_TIME': return DASH_TIME
+    case 'COYOTE_MS': return COYOTE_MS
+    case 'JUMP_BUFFER_MS': return JUMP_BUFFER_MS
   }
 }
 
@@ -277,5 +289,8 @@ export function setTuning(key: TuningKey, value: number): void {
     case 'ACCEL': ACCEL = value; break
     case 'DECEL': DECEL = value; break
     case 'DASH_SPEED': DASH_SPEED = value; break
+    case 'DASH_TIME': DASH_TIME = value; break
+    case 'COYOTE_MS': COYOTE_MS = value; break
+    case 'JUMP_BUFFER_MS': JUMP_BUFFER_MS = value; break
   }
 }
