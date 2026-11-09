@@ -29,14 +29,24 @@ export let JUMP_CUT = 0.45
 export const COYOTE_MS = 90
 export const JUMP_BUFFER_MS = 110
 
-// --- Step 5: flat form ---
+// --- Step 5: flat form (numbers from Docs/level 1 spec) ---
 // Folding keeps the feet planted: the box shrinks downward from the head.
-export const PLAYER_FLAT_W = 30
-export const PLAYER_FLAT_H = 12
+export const PLAYER_FLAT_W = 28
+export const PLAYER_FLAT_H = 10
 
-// A slit must pass the flat form and stop the standing one, so it lives
-// between PLAYER_FLAT_H and PLAYER_H. Half a tile, for the grid.
-export const SLIT_H = 16
+// The fold is a real transition, not a swap. The hitbox interpolates over
+// this long, so you have to finish folding before you fit through a slit.
+export const FOLD_TIME_MS = 120
+
+// A slit passes the flat form and stops the standing one, so it lives
+// between PLAYER_FLAT_H and PLAYER_H.
+export const SLIT_H = 14
+
+// Folding out of a run keeps the momentum. Entry speed is capped here,
+// then friction bleeds it down to the flat cruising speed.
+export const FLAT_ENTRY_SPEED = 320
+export const FLAT_FRICTION = 700
+export const FLAT_MAX_SPEED = 200
 
 // --- Step 4: dash (numbers from Docs/level 1 spec) ---
 export let DASH_SPEED = 560

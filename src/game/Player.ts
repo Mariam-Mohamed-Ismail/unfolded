@@ -9,6 +9,10 @@ import {
   COYOTE_MS,
   DASH_TAIL_MS,
   DASH_TAIL_MULT,
+  FLAT_ENTRY_SPEED,
+  FLAT_FRICTION,
+  FLAT_MAX_SPEED,
+  FOLD_TIME_MS,
   DASH_STRETCH_X,
   DASH_STRETCH_Y,
   DASH_COOLDOWN,
@@ -35,8 +39,8 @@ import {
   PLAYER_W,
 } from './constants.ts'
 
-// Folding keeps the feet planted, so the centre moves by half the height lost.
-const FOLD_SHIFT = (PLAYER_H - PLAYER_FLAT_H) / 2
+// How much fold progress one second buys.
+const FOLD_RATE = 1000 / FOLD_TIME_MS
 
 // The constants are in milliseconds because that is the unit you tune in.
 // Converted once, here, so `dt` is the only unit inside the controller.
@@ -86,6 +90,9 @@ export class Player {
   vy = 0
   grounded = false
   facing = 1
+
+  /** 0 standing, 1 fully folded. Anything above 0 counts as flat. */
+  foldT = 0
   flat = false
 
   state: PlayerState = 'fall'
@@ -182,6 +189,7 @@ export class Player {
     this.airDashUsed = false
     this.state = 'fall'
     this.flat = false
+    this.foldT = 0
     this.view.setForm(false)
     this.clearEvents()
     this.view.update(0, x, this.footY(), this.facing)
@@ -202,7 +210,7 @@ export class Player {
     if (input.dir !== 0) this.facing = input.dir
     this.landHold = tick(this.landHold, dt)
     if (this.grounded) this.airDashUsed = false
-    this.updateForm(input, solids)
+    this.updateForm(dt, input, solids)
     this.dashWait = tick(this.dashWait, dt)
 
     // The buffer keeps ticking through freeze and dash, so a jump pressed
@@ -294,6 +302,8 @@ export class Player {
   /** Begins the freeze that precedes the dash. True if a dash started. */
   private startDash(input: Input): boolean {
     if (!input.dashPressed) return false
+    // The spec allows no jump, dash or sword while folded.
+    if (this.flat) return false
     if (this.dashWait > 0) return false
     // One air dash per trip off the ground; landing clears it.
     if (!this.grounded && this.airDashUsed) return false
@@ -339,6 +349,11 @@ export class Player {
   // --- run and jump ---
 
   private runX(dt: number, dir: number): void {
+    if (this.flat) {
+      this.slideX(dt, dir)
+      return
+    }
+
     const accel = this.grounded ? ACCEL : AIR_ACCEL
     const decel = this.grounded ? DECEL : AIR_DECEL
 
@@ -355,6 +370,35 @@ export class Player {
     const turning = this.vx !== 0 && Math.sign(this.vx) !== dir
     const rate = turning ? decel : accel
     this.vx = Phaser.Math.Clamp(this.vx + dir * rate * dt, -MAX_SPEED, MAX_SPEED)
+  }
+
+  /**
+   * Flat movement. Momentum carried in above the flat cap bleeds off at
+   * friction and cannot be topped up; below the cap you steer normally.
+   */
+  private slideX(dt: number, dir: number): void {
+    if (Math.abs(this.vx) > FLAT_MAX_SPEED) {
+      const sign = Math.sign(this.vx)
+      this.vx = sign * Math.max(FLAT_MAX_SPEED, Math.abs(this.vx) - FLAT_FRICTION * dt)
+      return
+    }
+
+    const decel = this.grounded ? DECEL : AIR_DECEL
+    if (dir === 0) {
+      const drop = decel * dt
+      if (Math.abs(this.vx) <= drop) this.vx = 0
+      else this.vx -= Math.sign(this.vx) * drop
+      return
+    }
+
+    const accel = this.grounded ? ACCEL : AIR_ACCEL
+    const turning = this.vx !== 0 && Math.sign(this.vx) !== dir
+    const rate = turning ? decel : accel
+    this.vx = Phaser.Math.Clamp(
+      this.vx + dir * rate * dt,
+      -FLAT_MAX_SPEED,
+      FLAT_MAX_SPEED,
+    )
   }
 
   private tickBuffer(dt: number, input: Input): void {
@@ -395,38 +439,48 @@ export class Player {
 
   // --- form ---
 
-  private updateForm(input: Input, solids: Solid[]): void {
+  private updateForm(dt: number, input: Input, solids: Solid[]): void {
+    const wasFlat = this.flat
+
     if (input.flatHeld) {
-      if (!this.flat) this.goFlat(solids)
-    } else if (this.flat) {
-      this.tryStand(solids)
+      if (this.foldT === 0) {
+        this.justFolded = true
+        // Folding out of a run keeps the momentum, capped. Running tops out
+        // below the cap, so this only bites coming out of a dash.
+        this.vx = Phaser.Math.Clamp(this.vx, -FLAT_ENTRY_SPEED, FLAT_ENTRY_SPEED)
+      }
+      this.setFold(Math.min(1, this.foldT + FOLD_RATE * dt), solids)
+    } else if (this.foldT > 0) {
+      // The headroom rule: start unfolding only where a standing box fits,
+      // so releasing the key under a slit leaves you flat instead of stuck.
+      if (!this.standingFits(solids)) return
+      this.setFold(Math.max(0, this.foldT - FOLD_RATE * dt), solids)
+      if (this.foldT === 0) this.justStood = true
     }
+
+    this.flat = this.foldT > 0
+    if (this.flat !== wasFlat) this.view.setForm(this.flat)
   }
 
-  private goFlat(solids: Solid[]): void {
-    this.y += FOLD_SHIFT
-    this.flat = true
-    this.justFolded = true
-    this.view.setForm(true)
-    // Flat is wider than standing, so folding beside a wall can end up
-    // inside it. Shove back out rather than refusing to fold, otherwise you
-    // could not fold while pressed against the pillar you mean to enter.
+  /** Moves the fold on, keeping the feet planted and staying out of walls. */
+  private setFold(next: number, solids: Solid[]): void {
+    const bottom = this.y + this.halfH()
+    this.foldT = next
+    this.y = bottom - this.halfH()
+    // The flat box is wider than the standing one, so folding beside a wall
+    // can end up inside it. Shove back out rather than refusing to fold,
+    // otherwise you could not fold against the pillar you mean to enter.
     this.pushOutX(solids)
   }
 
-  /**
-   * The headroom rule: unfold only where a standing box actually fits, so
-   * you can never stand up inside a slit and get stuck.
-   */
-  private tryStand(solids: Solid[]): void {
-    const y = this.y - FOLD_SHIFT
+  /** Would a full standing box fit where we are? The 30px headroom rule. */
+  private standingFits(solids: Solid[]): boolean {
+    const bottom = this.y + this.halfH()
+    const y = bottom - PLAYER_H / 2
     for (const s of solids) {
-      if (this.boxOverlaps(s, this.x, y, PLAYER_W / 2, PLAYER_H / 2)) return
+      if (this.boxOverlaps(s, this.x, y, PLAYER_W / 2, PLAYER_H / 2)) return false
     }
-    this.y = y
-    this.flat = false
-    this.justStood = true
-    this.view.setForm(false)
+    return true
   }
 
   private pushOutX(solids: Solid[]): void {
@@ -443,11 +497,11 @@ export class Player {
   }
 
   halfW(): number {
-    return (this.flat ? PLAYER_FLAT_W : PLAYER_W) / 2
+    return (PLAYER_W + (PLAYER_FLAT_W - PLAYER_W) * this.foldT) / 2
   }
 
   halfH(): number {
-    return (this.flat ? PLAYER_FLAT_H : PLAYER_H) / 2
+    return (PLAYER_H + (PLAYER_FLAT_H - PLAYER_H) * this.foldT) / 2
   }
 
   // --- collision ---

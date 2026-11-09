@@ -23,18 +23,19 @@ export const level1: Level = {
   spawn: { x: t(2), y: t(LOW) },
   solids: [
     // Starting ground.
-    { x: t(0), y: t(LOW), w: t(9), h: t(2) },
+    { x: t(0), y: t(LOW), w: t(7), h: t(2) },
     // A 2-tile block to clear. 64px, against a jump apex of 82px.
     { x: t(4), y: t(13), w: t(2), h: t(2) },
     // The step up, and the runway to the gap.
-    { x: t(9), y: t(HIGH), w: t(6), h: t(3) },
-    // --- the 6-tile gap runs from x=15 to x=21 ---
-    // Landing, and the ground the pillar stands on.
-    { x: t(21), y: t(HIGH), w: t(9), h: t(3) },
-    // The pillar, hanging to within SLIT_H of the ground.
-    { x: t(26), y: t(9), w: t(1), h: t(5) - SLIT_H },
+    { x: t(7), y: t(HIGH), w: t(6), h: t(3) },
+    // --- the 6-tile gap runs from x=13 to x=19 ---
+    // Landing, then the approach to the pillar and the ground it stands on.
+    { x: t(19), y: t(HIGH), w: t(11), h: t(3) },
+    // The slit pillar: 6 tiles long, 7 tiles tall so it cannot be jumped,
+    // hanging to within SLIT_H of the ground.
+    { x: t(22), y: t(7), w: t(6), h: t(7) - SLIT_H },
   ],
 }
 
 /** The gap the dash exists for, in pixels. */
-export const GAP_WIDTH = t(21) - t(15)
+export const GAP_WIDTH = t(19) - t(13)
