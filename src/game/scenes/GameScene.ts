@@ -45,6 +45,7 @@ export class GameScene extends Phaser.Scene {
       this,
       level1.spawn.x,
       level1.spawn.y - PLAYER_H / 2,
+      level1.solids,
     )
     // After the player, so paper lands on top of the figure.
     this.particles = new Particles(this)
@@ -80,7 +81,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private respawn(): void {
-    this.player.reset(level1.spawn.x, level1.spawn.y - PLAYER_H / 2)
+    this.player.reset(
+      level1.spawn.x,
+      level1.spawn.y - PLAYER_H / 2,
+      level1.solids,
+    )
     this.audio.respawn()
   }
 

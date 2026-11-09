@@ -87,10 +87,21 @@ export class Player {
 
   readonly view: PlayerView
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  /**
+    * `solids` is optional only so tests can build a player without a world.
+    * Pass it: without it the player starts airborne, and the first frame
+    * registers a landing it did not make.
+    */
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    solids: Solid[] = [],
+  ) {
     this.x = x
     this.y = y
     this.view = new PlayerView(scene)
+    this.grounded = this.onGround(solids)
   }
 
   /** Internal timers, for the debug overlay only. */
@@ -114,12 +125,14 @@ export class Player {
   }
 
   /** Drops the player back at a spawn point with no state carried over. */
-  reset(x: number, y: number): void {
+  reset(x: number, y: number, solids: Solid[] = []): void {
     this.x = x
     this.y = y
     this.vx = 0
     this.vy = 0
-    this.grounded = false
+    // Ask the ground rather than assuming we are falling, so spawning with
+    // your feet on the floor does not count as a landing.
+    this.grounded = this.onGround(solids)
     this.facing = 1
     // Stale timers would otherwise let you dash or jump out of the respawn.
     this.coyote = 0

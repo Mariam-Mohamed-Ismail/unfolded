@@ -92,7 +92,10 @@ export class Audio {
       const data = this.noise.getChannelData(0)
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
     }
-    if (this.ctx.state === 'suspended') void this.ctx.resume()
+    // resume() rejects if the page has not been interacted with yet.
+    // Swallow it: the next sound will try again, and an unhandled rejection
+    // would be noise in the console.
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {})
     return this.ctx
   }
 
