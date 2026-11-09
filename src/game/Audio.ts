@@ -1,25 +1,40 @@
 import {
+  SFX_ATTACK_MS,
   SFX_DASH_FROM_HZ,
+  SFX_DASH_GAIN,
+  SFX_DASH_Q,
   SFX_DASH_MS,
   SFX_DASH_TO_HZ,
+  SFX_FOLD_GAIN,
   SFX_FOLD_HZ,
   SFX_FOLD_MS,
+  SFX_FOLD_Q,
+  SFX_JUMP_GAIN,
   SFX_JUMP_HZ,
   SFX_JUMP_MS,
+  SFX_JUMP_Q,
+  SFX_JUMP_TONE_GAIN,
   SFX_JUMP_TONE_HZ,
+  SFX_LAND_GAIN,
   SFX_LAND_HZ,
   SFX_LAND_MS,
+  SFX_LAND_Q,
   SFX_RESPAWN_FROM_HZ,
+  SFX_RESPAWN_GAIN,
   SFX_RESPAWN_MS,
+  SFX_RESPAWN_Q,
   SFX_RESPAWN_TO_HZ,
   SFX_UNFOLD_FROM_HZ,
+  SFX_UNFOLD_GAIN,
   SFX_UNFOLD_MS,
+  SFX_UNFOLD_Q,
   SFX_UNFOLD_TO_HZ,
   SFX_VOLUME,
 } from './constants.ts'
 
 // An exponential ramp can never reach zero, so decays land here instead.
 const SILENT = 0.0001
+const ATTACK = SFX_ATTACK_MS / 1000
 
 /**
  * Every sound is synthesised: a burst of white noise pushed through a
@@ -36,28 +51,39 @@ export class Audio {
   jump(): void {
     // A puff of air plus a hint of pitch, so a jump has a note and a landing
     // does not.
-    this.noiseHit(SFX_JUMP_HZ, SFX_JUMP_HZ, SFX_JUMP_MS, 2, 0.6)
-    this.tone(SFX_JUMP_TONE_HZ, SFX_JUMP_TONE_HZ * 1.6, SFX_JUMP_MS, 0.25)
+    this.noiseHit(SFX_JUMP_HZ, SFX_JUMP_HZ, SFX_JUMP_MS, SFX_JUMP_Q, SFX_JUMP_GAIN)
+    this.tone(
+      SFX_JUMP_TONE_HZ,
+      SFX_JUMP_TONE_HZ * 1.6,
+      SFX_JUMP_MS,
+      SFX_JUMP_TONE_GAIN,
+    )
   }
 
   land(): void {
-    this.noiseHit(SFX_LAND_HZ, SFX_LAND_HZ * 0.5, SFX_LAND_MS, 1.2, 1)
+    this.noiseHit(SFX_LAND_HZ, SFX_LAND_HZ * 0.5, SFX_LAND_MS, SFX_LAND_Q, SFX_LAND_GAIN)
   }
 
   dash(): void {
-    this.noiseHit(SFX_DASH_FROM_HZ, SFX_DASH_TO_HZ, SFX_DASH_MS, 4, 0.8)
+    this.noiseHit(SFX_DASH_FROM_HZ, SFX_DASH_TO_HZ, SFX_DASH_MS, SFX_DASH_Q, SFX_DASH_GAIN)
   }
 
   fold(): void {
-    this.noiseHit(SFX_FOLD_HZ, SFX_FOLD_HZ * 0.7, SFX_FOLD_MS, 6, 0.7)
+    this.noiseHit(SFX_FOLD_HZ, SFX_FOLD_HZ * 0.7, SFX_FOLD_MS, SFX_FOLD_Q, SFX_FOLD_GAIN)
   }
 
   unfold(): void {
-    this.noiseHit(SFX_UNFOLD_FROM_HZ, SFX_UNFOLD_TO_HZ, SFX_UNFOLD_MS, 6, 0.7)
+    this.noiseHit(SFX_UNFOLD_FROM_HZ, SFX_UNFOLD_TO_HZ, SFX_UNFOLD_MS, SFX_UNFOLD_Q, SFX_UNFOLD_GAIN)
   }
 
   respawn(): void {
-    this.noiseHit(SFX_RESPAWN_FROM_HZ, SFX_RESPAWN_TO_HZ, SFX_RESPAWN_MS, 3, 0.9)
+    this.noiseHit(
+      SFX_RESPAWN_FROM_HZ,
+      SFX_RESPAWN_TO_HZ,
+      SFX_RESPAWN_MS,
+      SFX_RESPAWN_Q,
+      SFX_RESPAWN_GAIN,
+    )
   }
 
   /** Returns the new state, so the caller can report it. */
@@ -126,7 +152,10 @@ export class Audio {
     }
 
     const env = ctx.createGain()
-    env.gain.setValueAtTime(gain, now)
+    // Open over ATTACK rather than starting at full, or the burst begins
+    // with a click louder than the sound itself.
+    env.gain.setValueAtTime(SILENT, now)
+    env.gain.linearRampToValueAtTime(gain, now + Math.min(ATTACK, dur / 2))
     env.gain.exponentialRampToValueAtTime(SILENT, now + dur)
 
     src.connect(filter)
@@ -149,7 +178,8 @@ export class Audio {
     osc.frequency.exponentialRampToValueAtTime(toHz, now + dur)
 
     const env = ctx.createGain()
-    env.gain.setValueAtTime(gain, now)
+    env.gain.setValueAtTime(SILENT, now)
+    env.gain.linearRampToValueAtTime(gain, now + Math.min(ATTACK, dur / 2))
     env.gain.exponentialRampToValueAtTime(SILENT, now + dur)
 
     osc.connect(env)
