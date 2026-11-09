@@ -1,11 +1,13 @@
 import * as Phaser from 'phaser'
 import type { Input } from './Input.ts'
+import { PlayerView } from './PlayerView.ts'
 import {
   ACCEL,
   AIR_ACCEL,
   AIR_DECEL,
-  COLOR_PLAYER,
   COYOTE_MS,
+  DASH_STRETCH_X,
+  DASH_STRETCH_Y,
   DASH_COOLDOWN,
   DASH_FREEZE,
   DASH_SPEED,
@@ -15,7 +17,11 @@ import {
   GRAVITY,
   JUMP_BUFFER_MS,
   JUMP_CUT,
+  JUMP_STRETCH_X,
+  JUMP_STRETCH_Y,
   JUMP_VELOCITY,
+  LAND_SQUASH_X,
+  LAND_SQUASH_Y,
   MAX_FALL_SPEED,
   MAX_SPEED,
   PLAYER_FLAT_H,
@@ -68,12 +74,27 @@ export class Player {
   private dashing = 0
   private dashWait = 0
   private airDashUsed = false
-  private view: Phaser.GameObjects.Rectangle
+
+  // Set during update, read by the scene afterwards, cleared next frame.
+  // Keeps effects out of the controller without it knowing they exist.
+  justJumped = false
+  justLanded = false
+  justDashed = false
+  justFolded = false
+  /** Downward speed at the moment of the last landing. */
+  landSpeed = 0
+
+  readonly view: PlayerView
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.x = x
     this.y = y
-    this.view = scene.add.rectangle(x, y, PLAYER_W, PLAYER_H, COLOR_PLAYER)
+    this.view = new PlayerView(scene)
+  }
+
+  /** Where the feet are. The view is drawn and scaled from this point. */
+  footY(): number {
+    return this.y + this.halfH()
   }
 
   /** Drops the player back at a spawn point with no state carried over. */
@@ -91,15 +112,22 @@ export class Player {
     this.dashing = 0
     this.dashWait = 0
     this.airDashUsed = false
-    if (this.flat) {
-      this.flat = false
-      this.view.setSize(PLAYER_W, PLAYER_H)
-    }
-    this.view.setPosition(x, y)
+    this.flat = false
+    this.view.setForm(false)
+    this.clearEvents()
+    this.view.update(0, x, this.footY(), this.facing)
+  }
+
+  private clearEvents(): void {
+    this.justJumped = false
+    this.justLanded = false
+    this.justDashed = false
+    this.justFolded = false
   }
 
   /** `dt` is in seconds. */
   update(dt: number, input: Input, solids: Solid[]): void {
+    this.clearEvents()
     if (input.dir !== 0) this.facing = input.dir
     if (this.grounded) this.airDashUsed = false
     this.updateForm(input, solids)
@@ -112,18 +140,18 @@ export class Player {
     if (this.freeze > 0) {
       this.freeze = tick(this.freeze, dt)
       this.grounded = this.onGround(solids)
-      this.view.setPosition(this.x, this.y)
+      this.syncView(dt)
       return
     }
 
     if (this.dashing > 0) {
       this.dash(dt, solids)
-      this.view.setPosition(this.x, this.y)
+      this.syncView(dt)
       return
     }
 
     if (this.startDash(input)) {
-      this.view.setPosition(this.x, this.y)
+      this.syncView(dt)
       return
     }
 
@@ -134,7 +162,16 @@ export class Player {
     this.moveX(this.vx * dt, solids)
     this.moveY(this.vy * dt, solids)
 
-    this.view.setPosition(this.x, this.y)
+    this.syncView(dt)
+  }
+
+  /** Squash and stretch act on the drawing only; the hitbox never changes. */
+  private syncView(dt: number): void {
+    if (this.justLanded) this.view.pulse(LAND_SQUASH_X, LAND_SQUASH_Y)
+    else if (this.justJumped) this.view.pulse(JUMP_STRETCH_X, JUMP_STRETCH_Y)
+    else if (this.justDashed) this.view.pulse(DASH_STRETCH_X, DASH_STRETCH_Y)
+
+    this.view.update(dt, this.x, this.footY(), this.facing)
   }
 
   // --- dash ---
@@ -147,6 +184,7 @@ export class Player {
     if (!this.grounded && this.airDashUsed) return false
 
     if (!this.grounded) this.airDashUsed = true
+    this.justDashed = true
     this.freeze = FREEZE
     this.dashing = DASH
     this.vx = 0
@@ -218,6 +256,7 @@ export class Player {
 
     if (this.buffer > 0 && this.coyote > 0) {
       this.vy = JUMP_VELOCITY
+      this.justJumped = true
       // Spend both: the buffer so one press is one jump, the coyote so a jump
       // off a ledge cannot be taken twice.
       this.buffer = 0
@@ -245,7 +284,8 @@ export class Player {
   private goFlat(solids: Solid[]): void {
     this.y += FOLD_SHIFT
     this.flat = true
-    this.view.setSize(PLAYER_FLAT_W, PLAYER_FLAT_H)
+    this.justFolded = true
+    this.view.setForm(true)
     // Flat is wider than standing, so folding beside a wall can end up
     // inside it. Shove back out rather than refusing to fold, otherwise you
     // could not fold while pressed against the pillar you mean to enter.
@@ -263,7 +303,7 @@ export class Player {
     }
     this.y = y
     this.flat = false
-    this.view.setSize(PLAYER_W, PLAYER_H)
+    this.view.setForm(false)
   }
 
   private pushOutX(solids: Solid[]): void {
@@ -306,6 +346,7 @@ export class Player {
     // Only a real vertical move can change whether we are standing on
     // something, so a zero move leaves `grounded` alone.
     if (dy === 0) return
+    const wasGrounded = this.grounded
     this.grounded = false
     this.y += dy
 
@@ -313,6 +354,12 @@ export class Player {
       if (!this.overlaps(s)) continue
       if (dy > 0) {
         this.y = s.y - this.halfH()
+        if (!wasGrounded) {
+          this.justLanded = true
+          // Captured before vy is zeroed, so the scene can tell a hard
+          // landing from a gentle one.
+          this.landSpeed = this.vy
+        }
         this.grounded = true
       } else {
         this.y = s.y + s.h + this.halfH()

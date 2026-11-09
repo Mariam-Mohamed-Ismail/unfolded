@@ -44,6 +44,37 @@ export const DASH_TIME = 140
 export const DASH_COOLDOWN = 400
 export const DASH_FREEZE = 50
 
+// --- Step 7: feel ---
+export const COLOR_PLAYER_LINE = 0x1f8a4c
+
+// Squash and stretch scale the drawing only, never the hitbox.
+export const LAND_SQUASH_X = 1.3
+export const LAND_SQUASH_Y = 0.7
+export const JUMP_STRETCH_X = 0.8
+export const JUMP_STRETCH_Y = 1.25
+export const DASH_STRETCH_X = 1.45
+export const DASH_STRETCH_Y = 0.7
+export const SQUASH_RECOVER = 120
+
+// Shake is given in pixels here and converted where Phaser wants a
+// fraction of the screen width.
+export const SHAKE_LAND = 4
+export const SHAKE_LAND_MS = 120
+export const SHAKE_DASH = 2
+export const SHAKE_DASH_MS = 80
+
+// Below this landing speed the touchdown is soft and does not shake.
+// A full jump lands at about 710, a small hop at about 250.
+export const LAND_HARD_SPEED = 500
+
+export const PARTICLES_LAND = 8
+export const PARTICLES_DASH = 10
+export const PARTICLES_FOLD = 4
+export const PARTICLE_SPEED = 170
+export const PARTICLE_LIFE = 450
+export const PARTICLE_SIZE = 4
+export const PARTICLE_GRAVITY = 900
+
 // Safety clamp, not a feel knob: `delta` spikes to hundreds of ms after a tab
 // switch or a breakpoint, which would teleport the player through the floor in
 // a single frame.

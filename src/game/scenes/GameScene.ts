@@ -1,13 +1,31 @@
 import * as Phaser from 'phaser'
+import { Camera } from '../Camera.ts'
 import { Input } from '../Input.ts'
+import { Particles } from '../Particles.ts'
 import { Player } from '../Player.ts'
 import { level1 } from '../levels/level1.ts'
-import { COLOR_SOLID, GAME_HEIGHT, MAX_DT_MS, PLAYER_H, TILE } from '../constants.ts'
+import {
+  COLOR_SOLID,
+  GAME_HEIGHT,
+  LAND_HARD_SPEED,
+  MAX_DT_MS,
+  PARTICLES_DASH,
+  PARTICLES_FOLD,
+  PARTICLES_LAND,
+  PLAYER_H,
+  SHAKE_DASH,
+  SHAKE_DASH_MS,
+  SHAKE_LAND,
+  SHAKE_LAND_MS,
+  TILE,
+} from '../constants.ts'
 
 export class GameScene extends Phaser.Scene {
   // Not `input`: Phaser.Scene already owns that name.
   private controls!: Input
   private player!: Player
+  private particles!: Particles
+  private cam!: Camera
 
   constructor() {
     super('GameScene')
@@ -24,6 +42,12 @@ export class GameScene extends Phaser.Scene {
       level1.spawn.x,
       level1.spawn.y - PLAYER_H / 2,
     )
+    // After the player, so paper lands on top of the figure.
+    this.particles = new Particles(this)
+
+    const width = Math.max(...level1.solids.map((s) => s.x + s.w))
+    this.cam = new Camera(this, width)
+    this.cam.follow(this.player.view.gfx)
   }
 
   update(_time: number, delta: number): void {
@@ -33,10 +57,34 @@ export class GameScene extends Phaser.Scene {
 
     this.controls.update()
     this.player.update(dt, this.controls, level1.solids)
+    this.react()
+    this.particles.update(dt)
 
     // Missing the gap drops you out of the world; put you back at the start.
     if (this.player.y > GAME_HEIGHT + TILE * 2) {
       this.player.reset(level1.spawn.x, level1.spawn.y - PLAYER_H / 2)
     }
+  }
+
+  /** Turns what the controller did this frame into things you can see. */
+  private react(): void {
+    const p = this.player
+    const foot = p.footY()
+
+    if (p.justLanded) {
+      this.particles.burst(p.x, foot, PARTICLES_LAND)
+      // Only a real drop shakes; stepping off a kerb should not.
+      if (p.landSpeed >= LAND_HARD_SPEED) {
+        this.cam.shake(SHAKE_LAND, SHAKE_LAND_MS)
+      }
+    }
+
+    if (p.justDashed) {
+      // Thrown backwards, away from the direction of travel.
+      this.particles.burst(p.x, foot - 8, PARTICLES_DASH, -p.facing * 90)
+      this.cam.shake(SHAKE_DASH, SHAKE_DASH_MS)
+    }
+
+    if (p.justFolded) this.particles.burst(p.x, foot, PARTICLES_FOLD)
   }
 }
