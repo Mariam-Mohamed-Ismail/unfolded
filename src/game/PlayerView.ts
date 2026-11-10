@@ -1,5 +1,7 @@
 import * as Phaser from 'phaser'
 import type { Player } from './Player.ts'
+import type { Point } from './geom.ts'
+import { rotAbout } from './geom.ts'
 import {
   AFTERIMAGE_ALPHA,
   AFTERIMAGE_EVERY_MS,
@@ -38,7 +40,6 @@ const TRAIL_FADE = AFTERIMAGE_FADE_MS / 1000
 const SHRUG = SHRUG_MS / 1000
 const RAD = Math.PI / 180
 
-type Point = [number, number]
 type Tri = [Point, Point, Point]
 
 /**
@@ -74,15 +75,6 @@ const PIECES: Piece[] = [
   { limb: 'legLL', tri: [[-5.5, -6], [-2.5, -6], [-4, 0]] },
   { limb: 'legLR', tri: [[5.5, -6], [2.5, -6], [4, 0]] },
 ]
-
-function rotAbout(p: Point, a: number, o: Point): Point {
-  if (a === 0) return p
-  const c = Math.cos(a)
-  const s = Math.sin(a)
-  const dx = p[0] - o[0]
-  const dy = p[1] - o[1]
-  return [o[0] + dx * c - dy * s, o[1] + dx * s + dy * c]
-}
 
 type Trail = { tris: Tri[]; life: number }
 

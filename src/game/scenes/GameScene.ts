@@ -7,6 +7,7 @@ import { Level } from '../Level.ts'
 import { Particles } from '../Particles.ts'
 import { Player } from '../Player.ts'
 import { level1 } from '../levels/level1.ts'
+import type { Fx } from '../entities/Entity.ts'
 import {
   SHAKE_LAND_TILES,
   MAX_DT_MS,
@@ -30,6 +31,9 @@ export class GameScene extends Phaser.Scene {
   private audio!: Audio
   private debug!: Debug
   private level!: Level
+  /** One Graphics every entity draws into, cleared each frame. */
+  private entityGfx!: Phaser.GameObjects.Graphics
+  private fx!: Fx
 
   constructor() {
     super('GameScene')
@@ -38,6 +42,9 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.level = new Level(level1)
     this.level.draw(this)
+    // After the static floor and before the player, so a step that unfolds
+    // sits on top of the ground and behind the figure.
+    this.entityGfx = this.add.graphics()
 
     this.controls = new Input(this)
     const start = this.level.startPoint()
@@ -50,6 +57,14 @@ export class GameScene extends Phaser.Scene {
 
     this.cam = new Camera(this, this.level.widthPx, this.level.heightPx)
     this.cam.follow(this.player.view.gfx)
+
+    // What entities are allowed to make happen. Wired once, here, so no
+    // component ever imports Particles, Camera or Audio.
+    this.fx = {
+      dust: (x, y, count, color) => this.particles.burst(x, y, count, 0, color),
+      shake: (px, ms) => this.cam.shake(px, ms),
+      fold: () => this.audio.fold(),
+    }
   }
 
   update(_time: number, delta: number): void {
@@ -65,7 +80,10 @@ export class GameScene extends Phaser.Scene {
 
     this.player.update(dt, this.controls, this.level.solids)
     this.cam.update(this.player.facing)
-    this.level.claim(this.player.x)
+    // Follows the player between rooms and ticks the one they are in.
+    this.level.update(dt, this.player, this.fx)
+    this.entityGfx.clear()
+    this.level.render(this.entityGfx)
     this.react()
     // The dash hitstop freezes the player; hold the effects too, so the
     // whole picture stops rather than just the figure.
@@ -84,6 +102,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private respawn(): void {
+    // The room's contents first, then the player, so nothing is left
+    // half-solved behind them.
+    this.level.resetRoom()
     const at = this.level.respawnPoint()
     this.player.reset(at.x, at.y, this.level.solids)
     this.audio.respawn()

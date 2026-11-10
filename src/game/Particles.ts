@@ -19,6 +19,7 @@ type Flake = {
   rot: number
   spin: number
   size: number
+  color: number
 }
 
 /**
@@ -33,8 +34,17 @@ export class Particles {
     this.gfx = scene.add.graphics()
   }
 
-  /** `driftX` biases the spray, so a dash throws paper behind you. */
-  burst(x: number, y: number, count: number, driftX = 0): void {
+  /**
+   * `driftX` biases the spray, so a dash throws paper behind you. `color`
+   * lets a purple thing shed purple paper; the default is the figure's ink.
+   */
+  burst(
+    x: number,
+    y: number,
+    count: number,
+    driftX = 0,
+    color = COLOR_PLAYER_LINE,
+  ): void {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2
       const speed = PARTICLE_SPEED * (0.4 + Math.random() * 0.6)
@@ -49,6 +59,7 @@ export class Particles {
         rot: Math.random() * Math.PI,
         spin: (Math.random() - 0.5) * 12,
         size: PARTICLE_SIZE * (0.6 + Math.random() * 0.8),
+        color,
       })
     }
   }
@@ -69,7 +80,7 @@ export class Particles {
       f.y += f.vy * dt
       f.rot += f.spin * dt
 
-      this.gfx.fillStyle(COLOR_PLAYER_LINE, f.life / f.max)
+      this.gfx.fillStyle(f.color, f.life / f.max)
       const a = f.rot
       const b = a + (Math.PI * 2) / 3
       const c = a + (Math.PI * 4) / 3

@@ -210,6 +210,54 @@ export const SFX_RESPAWN_MS = 220
 export const SFX_RESPAWN_Q = 1.2
 export const SFX_RESPAWN_GAIN = 2.28
 
+// --- Step 11: room 1A, fold switch and stairs ---
+// The spec's colour language: purple is fold pieces and switches.
+export const COLOR_FOLD = 0x8b7fd6
+// The same purple in shadow. A folding piece lerps between the two by its
+// angle, which is what makes a flat sheet read as a rotating one.
+export const COLOR_FOLD_SHADE = 0x5f55a0
+export const COLOR_FOLD_LINE = 0x2b2a33
+export const FOLD_OUTLINE = 2
+
+// Folded pieces are drawn as a dashed ghost of where they will be.
+export const FOLD_GHOST_ALPHA = 0.55
+export const FOLD_DASH_PX = 7
+export const FOLD_DASH_GAP = 5
+
+// Interactive things breathe until they have been used.
+export const PULSE_HZ = 0.8
+export const PULSE_DEPTH = 0.3
+
+// The pressure plate. The trigger box is taller than the plate so stepping
+// on it is forgiving, and dashing across it still counts.
+export const SWITCH_W = 26
+export const SWITCH_H = 7
+export const SWITCH_TRIGGER_H = 12
+export const SWITCH_PRESS_PX = 3
+
+// The ripple that spreads from the plate when it is pressed.
+export const RIPPLE_MS = 520
+export const RIPPLE_RADIUS = 96
+export const RIPPLE_WIDTH = 2
+
+// The dotted line from a switch to each thing it drives. It draws on the
+// press, holds while they move, then fades: the room explains itself once
+// rather than carrying the explanation forever.
+export const LINK_DOT_PX = 3
+export const LINK_DOT_GAP = 10
+export const LINK_HOLD_MS = 700
+export const LINK_FADE_MS = 500
+
+// One step of the stairs: waits its turn, then rotates up about its crease.
+// The spec gives the 0.12s stagger; the rotation length is mine.
+export const FOLD_STAGGER_MS = 120
+export const FOLD_OPEN_MS = 180
+
+// "3 px for 100 ms when a fold platform slams open."
+export const SHAKE_FOLD = 3
+export const SHAKE_FOLD_MS = 100
+export const PARTICLES_FOLD_OPEN = 6
+
 // Safety clamp, not a feel knob: `delta` spikes to hundreds of ms after a tab
 // switch or a breakpoint, which would teleport the player through the floor in
 // a single frame.

@@ -1,0 +1,35 @@
+Phase A – Movement (Day 1)
+Steps 1 to 3 (already planned)
+Mount Phaser, run, jump. You're doing these now.
+Step 4 – Dash and the state machine
+Goal: a dash that feels crisp, and a clean state machine so run, jump, dash and flat form don't turn into a tangle of if statements.
+Test: one air dash per jump, refreshed on landing. Ground dash works. Cooldown is noticeable. Dash cancels gravity for its duration.
+
+Step 5 – Flat form and the slit
+Goal: hold S to fold flat, slide through a low gap, and never get stuck.
+Test: you can't walk through the slit standing. Flat, you can. Letting go of S inside the slit keeps you flat until there's room. Sliding in at full speed feels like a slide.
+
+Step 6 – Level data and the movement lane
+Goal: the level comes from a data file, not from code, and the movement lane exists with the dash gap and the slit.
+Test: the 6-tile gap can't be crossed with a jump alone but can with a jump plus dash. The pit floor is safe and you can jump out of it.
+
+Step 7 – Game feel: visuals and camera
+Test: landing and dashing feel punchy, the camera never jerks, and nothing shakes when it shouldn't.
+
+Step 8 – Sound
+Test: each sound plays once per action, none of them is loud or harsh, and M mutes everything.
+
+Step 9 – Debug overlay, tuning panel and reset
+
+Phase B – Puzzle framework and the fold room 
+Step 10 – Entities, rooms and reset
+Goal: a reusable base for every puzzle object, plus rooms that save and restore their state.
+Test: Backspace puts everything back exactly as it started. Dying or resetting never leaves a room half-changed.
+
+
+Step 11 – Switch, fold platform and room 1A
+Goal: the first real puzzle, with clear feedback.
+Test: you can't reach the ledge without the switch. The stairs unfold one after another, collision turns on as each lands, and the dotted link line makes it obvious what the switch controls.
+
+
+
