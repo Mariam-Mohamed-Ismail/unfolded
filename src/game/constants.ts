@@ -9,7 +9,9 @@ export const PLAYER_W = 20
 export const PLAYER_H = 30
 
 // --- Colours (all art is drawn in code, no image files) ---
-export const COLOR_BG = 0xb9dfc1
+// The spec's mint. Changed in step 16 from 0xb9dfc1 so the menu and the
+// game are the same colour either side of a fade.
+export const COLOR_BG = 0xc9e4d1
 export const COLOR_SOLID = 0x1f8a4c
 export const COLOR_PLAYER = 0x7fc49a
 
@@ -257,6 +259,170 @@ export const FOLD_OPEN_MS = 180
 export const SHAKE_FOLD = 3
 export const SHAKE_FOLD_MS = 100
 export const PARTICLES_FOLD_OPEN = 6
+
+// --- Step 12: tutorial prompts ---
+// The spec's paper palette, used here first: cream paper, dark ink.
+export const COLOR_PAPER = 0xf7f2e8
+export const COLOR_INK = 0x2b2a33
+
+// A tag fades rather than blinks, and floats clear of the ground.
+export const PROMPT_FADE_MS = 220
+export const PROMPT_LIFT = 58
+export const PROMPT_PAD = 7
+export const PROMPT_FONT_PX = 13
+export const PROMPT_CAP_PX = 11
+// The corner that marks it as folded paper.
+export const PROMPT_FOLD_PX = 8
+
+// Moving faster than this counts as having worked out how to run.
+export const PROMPT_RUN_SPEED = 120
+// A held jump clears two tiles; a tap does not, which is the lesson.
+export const PROMPT_HIGH_RISE = 64
+
+// "If the player fails the same spot 3 times, that spot's prompt returns."
+export const PROMPT_FAILS_FOR_HINT = 3
+export const PROMPT_PULSE_DEPTH = 0.45
+
+// --- Step 13: room 1B, the flat-form slit ---
+// The spec's colour for form pieces: slits and pickups.
+export const COLOR_FORM = 0x2fa58a
+export const SLIT_GLOW_WIDTH = 2
+
+// How tall a slit pillar is when the data does not say. Seven tiles is far
+// over the 82px jump, which is what stops you going round the lesson.
+export const SLIT_PILLAR_H = 7
+
+// The marker on the opening: a small chevron pointing through it.
+export const CHEVRON_W = 7
+export const CHEVRON_H = 9
+export const CHEVRON_INSET = 6
+
+// --- Step 14: room 1C, the wind ---
+// The spec's colour for wind.
+export const COLOR_WIND = 0xf0a93b
+
+// Inside a draught, gravity is ignored and vertical speed is driven toward
+// this instead. Both numbers come from the spec.
+export const DRAUGHT_VY = -320
+export const DRAUGHT_ACCEL = 2400
+
+// The fan itself: triangle blades, turning.
+export const FAN_SPIN = 6
+export const FAN_BLADES = 3
+export const FAN_BLADE_PX = 18
+export const FAN_BODY_H = 10
+// How tall the draught reaches when the data does not say, in tiles.
+export const FAN_COLUMN_H = 8
+
+// The column is drawn as amber triangles rising through it, 14 a second per
+// the spec. At this speed a 256px column holds about 22 at a time.
+export const FAN_MOTES_PER_S = 14
+export const FAN_MOTE_SPEED = 160
+export const FAN_MOTE_PX = 5
+
+// Streaks swirl around the player while they are inside the column.
+export const FAN_STREAKS = 3
+export const FAN_STREAK_PX = 16
+export const FAN_STREAK_R = 22
+export const FAN_SWIRL = 7
+
+// The hum: a low filtered loop whose level follows distance. Silent beyond
+// this far away. The gain is solved numerically, like the one-shot voices:
+// a bandpass throws most of the noise energy away.
+export const FAN_HEAR_PX = 420
+export const FAN_HUM_HZ = 120
+export const FAN_HUM_Q = 1.2
+// Solved for -38 dBFS RMS at full closeness, which sits under the
+// footstep's -34 because the hum never stops. A guess of 4 would have run
+// at -20 dBFS, continuously.
+export const FAN_HUM_GAIN = 0.54
+
+// --- Step 15: the end of the level ---
+// The sword pieces: three teal triangles, orbiting.
+export const PICKUP_PIECES = 3
+export const PICKUP_PIECE_PX = 6
+export const PICKUP_ORBIT_R = 16
+export const PICKUP_ORBIT_HZ = 0.35
+// Reach from the anchor to the nearest point of the player's box. Standing
+// under them is 18px, so walking up to them is enough: the payoff should
+// not be a second dexterity test after riding the fan.
+export const PICKUP_REACH = 26
+export const PICKUP_SWIRL_MS = 260
+export const PICKUP_CARRY_R = 24
+// "Slight zoom pulse 1.0 to 1.03 for 120ms on pickup."
+export const PICKUP_ZOOM = 0.03
+export const PICKUP_ZOOM_MS = 120
+
+// Folded together, the three pieces make one long thin blade.
+export const SWORD_LEN = 34
+export const SWORD_W = 7
+export const SLASH_MS = 220
+export const SLASH_ARC = 2.4
+export const SLASH_SHAKE = 2
+export const SLASH_SHAKE_MS = 70
+
+// The exit door: folded paper that opens as you approach.
+export const DOOR_W = 26
+export const DOOR_H = 46
+export const DOOR_NEAR_PX = 110
+export const DOOR_OPEN_MS = 320
+
+// Pickup: a triangle-wave arpeggio, the spec's three notes.
+//
+// A bare triangle's RMS is its peak over root 3, which is -4.8 dB, and that
+// is as far as arithmetic gets you: the decay envelope takes off another
+// 12 dB over a 150ms note, so the measured unit level is -17 dB. Solving
+// for it gives 0.71 where the waveform maths alone said 0.17 - quiet enough
+// to be inaudible under the rest of the mix.
+export const SFX_PICKUP_NOTES = [523, 659, 784]
+export const SFX_PICKUP_NOTE_MS = 150
+export const SFX_PICKUP_STEP_MS = 80
+export const SFX_PICKUP_GAIN = 0.71
+
+// The sword folding: a bright upward sweep. Noise, so the gain is solved.
+export const SFX_WHOOSH_FROM_HZ = 600
+export const SFX_WHOOSH_TO_HZ = 4000
+export const SFX_WHOOSH_MS = 160
+export const SFX_WHOOSH_Q = 1.5
+export const SFX_WHOOSH_GAIN = 3.9
+
+// --- Step 16: scenes, menus and the HUD ---
+export const FADE_MS = 220
+
+// Buttons: cream paper with a dark outline, the selected one purple.
+export const MENU_W = 300
+export const MENU_H = 44
+export const MENU_GAP = 12
+export const MENU_FONT_PX = 17
+export const MENU_FOLD_PX = 10
+export const MENU_TOP = 250
+// Where the buttons sit on a page that has a list above them.
+export const MENU_TOP_LIST = 352
+export const TITLE_FONT_PX = 58
+export const TITLE_Y = 130
+export const SUBTITLE_FONT_PX = 15
+
+// The origami shape drifting behind the title: a few big triangles turning
+// slowly, well behind the text.
+export const DRIFT_TRIS = 4
+export const DRIFT_R = 108
+export const DRIFT_SPIN = 0.09
+export const DRIFT_HZ = 0.05
+export const DRIFT_PX = 26
+export const DRIFT_ALPHA = 0.3
+
+// The HUD: room name one side, timer and resets the other. Nothing else.
+export const HUD_FONT_PX = 13
+export const HUD_PAD = 10
+
+// --- Step 17: the pause overlay ---
+// The game stays on screen underneath, washed over rather than hidden.
+export const PAUSE_DIM = 0.55
+export const PAUSE_PANEL_W = 400
+export const PAUSE_PANEL_PAD = 26
+export const PAUSE_TITLE_Y = 92
+export const PAUSE_TOP = 138
+export const PAUSE_TOP_LIST = 300
 
 // Safety clamp, not a feel knob: `delta` spikes to hundreds of ms after a tab
 // switch or a breakpoint, which would teleport the player through the floor in

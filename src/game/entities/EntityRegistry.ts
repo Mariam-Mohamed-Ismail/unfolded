@@ -1,6 +1,11 @@
 import { Checkpoint } from './Checkpoint.ts'
 import { Entity } from './Entity.ts'
+import { ExitDoor } from './ExitDoor.ts'
+import { Fan } from './Fan.ts'
 import { FoldPlatform } from './FoldPlatform.ts'
+import { Pickup } from './Pickup.ts'
+import { PromptTag } from './PromptTag.ts'
+import { Slit } from './Slit.ts'
 import { Switch } from './Switch.ts'
 import type { EntityContext } from './Entity.ts'
 import type { EntitySpec } from '../levels/types.ts'
@@ -65,12 +70,17 @@ export class EntityRegistry {
 }
 
 /**
- * The registry the game runs on. One line per component, in one place —
- * Fan, Slit, Pickup and ExitDoor join this list as they are built.
+ * The registry the game runs on. One line per component, in one place.
+ * Every type the spec's level data names is here.
  */
 export function createRegistry(): EntityRegistry {
   return new EntityRegistry()
     .register('Checkpoint', (spec, ctx) => new Checkpoint(spec, ctx))
     .register('Switch', (spec, ctx) => new Switch(spec, ctx))
     .register('FoldPlatform', (spec, ctx) => new FoldPlatform(spec, ctx))
+    .register('PromptTag', (spec, ctx) => new PromptTag(spec, ctx))
+    .register('Slit', (spec, ctx) => new Slit(spec, ctx))
+    .register('Fan', (spec, ctx) => new Fan(spec, ctx))
+    .register('Pickup', (spec, ctx) => new Pickup(spec, ctx))
+    .register('ExitDoor', (spec, ctx) => new ExitDoor(spec, ctx))
 }

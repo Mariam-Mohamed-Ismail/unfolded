@@ -4,20 +4,35 @@ import { Room } from './Room.ts'
 import { createRegistry } from './entities/EntityRegistry.ts'
 import { COLOR_SOLID, PLAYER_H, TILE } from './constants.ts'
 import type { EntityRegistry } from './entities/EntityRegistry.ts'
-import type { EntityWorld, Fx } from './entities/Entity.ts'
+import type { Buttons, EntityWorld, Fx } from './entities/Entity.ts'
 import type { LevelData } from './levels/types.ts'
-import type { Solid } from './Player.ts'
+import type { Solid, Updraft } from './Player.ts'
 
-/** Just enough of the player for the level to place and measure them. */
+/**
+ * Just enough of the player for the level to place them, measure them and
+ * tell its entities what they just did. Player satisfies this as it is.
+ */
 export type PlayerLike = {
   x: number
   y: number
+  vx: number
+  grounded: boolean
+  justJumped: boolean
+  justDashed: boolean
+  justFolded: boolean
   halfW: () => number
   halfH: () => number
 }
 
 /** Used until the scene hands over the real one. */
-const NO_FX: Fx = { dust: () => {}, shake: () => {}, fold: () => {} }
+const NO_FX: Fx = {
+  dust: () => {},
+  shake: () => {},
+  zoom: () => {},
+  sound: () => {},
+  label: () => {},
+  hum: () => {},
+}
 
 /**
  * Turns level data into something the scene can use: pixel rectangles to
@@ -38,9 +53,23 @@ export class Level {
   private data: LevelData
   private current: Room | null = null
   private world: EntityWorld = {
-    player: { left: 0, right: 0, top: 0, bottom: 0 },
+    player: {
+      box: { left: 0, right: 0, top: 0, bottom: 0 },
+      grounded: false,
+      speed: 0,
+      jumped: false,
+      dashed: false,
+      folded: false,
+      sword: false,
+      slash: false,
+      failedAt: null,
+    },
     fx: NO_FX,
   }
+  /** Set by failedAt(), consumed by the next update. */
+  private failed: number | null = null
+  /** Set by pressed(), consumed by the next update. */
+  private buttons: Buttons = { sword: false, slash: false }
 
   constructor(data: LevelData) {
     this.data = data
@@ -104,6 +133,21 @@ export class Level {
     return this.current
   }
 
+  /**
+   * Start inside a particular room, which is what the menu's room select
+   * does. Returns where to put the player; an unknown id falls back to the
+   * level's own spawn rather than failing.
+   */
+  startAt(roomId: string): { x: number; y: number } {
+    const room = this.rooms.find((r) => r.id === roomId)
+    if (!room) {
+      console.warn(`Level: no room with id "${roomId}", starting at the spawn`)
+      return this.startPoint()
+    }
+    this.enter(room)
+    return this.respawnPoint()
+  }
+
   roomAt(x: number): Room | undefined {
     return this.rooms.find((r) => r.contains(x))
   }
@@ -119,17 +163,74 @@ export class Level {
     // are rather than losing the room the player would reset to.
     if (room && room !== this.current) this.enter(room)
 
-    // One world object, rewritten in place: entities see the player's box
-    // this frame and can ask the scene for dust, a shake or a crinkle.
+    // One world object, rewritten in place: entities see where the player
+    // is, what they just did, and how to ask the scene for an effect.
     const hw = player.halfW()
     const hh = player.halfH()
-    this.world.player.left = player.x - hw
-    this.world.player.right = player.x + hw
-    this.world.player.top = player.y - hh
-    this.world.player.bottom = player.y + hh
+    const sense = this.world.player
+    sense.box.left = player.x - hw
+    sense.box.right = player.x + hw
+    sense.box.top = player.y - hh
+    sense.box.bottom = player.y + hh
+    sense.grounded = player.grounded
+    sense.speed = Math.abs(player.vx)
+    sense.jumped = player.justJumped
+    sense.dashed = player.justDashed
+    sense.folded = player.justFolded
+    sense.sword = this.buttons.sword
+    sense.slash = this.buttons.slash
+    // One frame only, like the player's own event flags.
+    sense.failedAt = this.failed
+    this.failed = null
+    this.buttons = { sword: false, slash: false }
     this.world.fx = fx
 
     this.current?.update(dt, this.world)
+  }
+
+  /**
+   * Is anything moving the air where the player is? Asked before the player
+   * moves, so a draught takes effect on the same frame you step into it.
+   */
+  updraftAt(player: PlayerLike): Updraft | null {
+    const room = this.current
+    if (!room) return null
+    const hw = player.halfW()
+    const hh = player.halfH()
+    const box = {
+      left: player.x - hw,
+      right: player.x + hw,
+      top: player.y - hh,
+      bottom: player.y + hh,
+    }
+    for (const entity of room.entities) {
+      const lift = entity.draughtAt(box)
+      if (lift) return lift
+    }
+    return null
+  }
+
+  /**
+   * The player muffed it here: a reset, or a fall into a pit. Consumed by
+   * the next update, which is what lets a prompt count failures at its own
+   * spot without knowing what counts as one.
+   */
+  failedAt(x: number): void {
+    this.failed = x
+  }
+
+  /**
+   * Button edges for the entities that answer to them. They come from Input
+   * rather than from the player, so they are handed in the same way a
+   * failure is: set now, consumed by the next update.
+   */
+  pressed(buttons: Buttons): void {
+    this.buttons = buttons
+  }
+
+  /** Has the player reached the way out? */
+  finished(): boolean {
+    return this.entities.byType('ExitDoor').some((e) => e.done())
   }
 
   /**

@@ -70,6 +70,10 @@ export class FoldPlatform extends Entity {
     return this.solidOn
   }
 
+  done(): boolean {
+    return this.solidOn
+  }
+
   /** 0 flat, 1 landed. For the overlay and for tests. */
   progress(): number {
     return this.t
@@ -99,7 +103,7 @@ export class FoldPlatform extends Entity {
     // It lands rather than appears: paper, dust and a knock.
     world.fx.dust(this.x + this.w / 2, this.topY, PARTICLES_FOLD_OPEN, COLOR_FOLD)
     world.fx.shake(SHAKE_FOLD, SHAKE_FOLD_MS)
-    world.fx.fold()
+    world.fx.sound('fold')
   }
 
   reset(): void {

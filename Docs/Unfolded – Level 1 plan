@@ -31,5 +31,32 @@ Step 11 – Switch, fold platform and room 1A
 Goal: the first real puzzle, with clear feedback.
 Test: you can't reach the ledge without the switch. The stairs unfold one after another, collision turns on as each lands, and the dotted link line makes it obvious what the switch controls.
 
+Step 12 – Tutorial prompts and hints
+Goal: the level teaches without text walls.
+Test: each prompt appears only near the spot where it applies, fades after you do the action once, and comes back with a soft pulse if you fail the same spot 3 times.
 
+
+Phase C – Form and wind rooms, end of level 
+
+Step 13 – Room 1B: the slit puzzle
+Test: only flat form passes it, there's no way to stand through or jump over it, and the optional second slit reinforces the idea.
+
+Step 14 – Room 1C: fan and wind
+Test: the high platform is only reachable by riding the draught, falling into the pit never traps you, and steering inside the column feels good.
+
+Step 15 – Pickup, sword toggle, exit
+
+Phase D – Menus
+Build these after Level 1 works from start to finish.
+
+Step 16 – Scene flow and main menu
+Screens and flow: Boot, Main menu, Game, Pause overlay, Level complete. The game scene never knows about the menu, it just reports events (level complete, quit).
+Main menu contents: title "Unfolded", Play, Room select, Controls, Sound on/off. Room select lists every room in the level data (Movement lane, 1A, 1B, 1C), so Levels 2 and 3 appear automatically later. Keyboard (arrows, Enter) and mouse both work.
+Look: same paper style as the game: mint background, cream paper buttons with dark outline, one purple highlight on the selected item, a slow-drifting origami shape behind the title drawn in code, quick fade between scenes.
+Test: you can start the game, jump to any room directly, come back to the menu, and start again without a page reload or leftover sounds.
+
+
+Step 17 – Pause menu
+Contents: Resume, Restart room, Room select, Controls, Sound on/off, Quit to main menu. Esc opens and closes it. The game freezes behind a soft darkened overlay and the player's input is blocked while it's open.
+Test: pausing mid-dash or mid-jump and resuming doesn't break the state, the timers don't keep counting while paused, music and fan hum pause with it, and Restart room puts everything back.
 

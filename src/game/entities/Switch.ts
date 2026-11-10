@@ -56,13 +56,18 @@ export class Switch extends Entity {
     return this.pressed
   }
 
+  /** A pressed plate is a finished lesson, which is what a tag asks about. */
+  done(): boolean {
+    return this.pressed
+  }
+
   update(dt: number, world: EntityWorld): void {
     this.pulseClock += dt
     if (this.pressed) {
       this.clock += dt
       return
     }
-    if (!overlaps(world.player, this.triggerBox())) return
+    if (!overlaps(world.player.box, this.triggerBox())) return
     this.press()
   }
 

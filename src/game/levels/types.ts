@@ -37,6 +37,14 @@ export type EntitySpec = {
   /** Ids of the entities this one drives, e.g. a switch and its steps. */
   targets?: string[]
   startsFolded?: boolean
+  /** A prompt's words. Four or fewer, per the tutorial rules. */
+  text?: string
+  /** The key caps a prompt draws, e.g. ['A', 'D']. */
+  keys?: string[]
+  /** What dismisses a prompt: run, jump, jumpHigh, dash, fold, sword, target. */
+  action?: string
+  /** Id of something that must be done before a prompt may show at all. */
+  after?: string
   /** Floor height for something standing in a pit. */
   floorH?: number
   /** Height of a draught column, in tiles. */

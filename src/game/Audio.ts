@@ -1,5 +1,17 @@
 import {
+  FAN_HUM_GAIN,
+  FAN_HUM_HZ,
+  FAN_HUM_Q,
   SFX_ATTACK_MS,
+  SFX_PICKUP_GAIN,
+  SFX_PICKUP_NOTES,
+  SFX_PICKUP_NOTE_MS,
+  SFX_PICKUP_STEP_MS,
+  SFX_WHOOSH_FROM_HZ,
+  SFX_WHOOSH_GAIN,
+  SFX_WHOOSH_MS,
+  SFX_WHOOSH_Q,
+  SFX_WHOOSH_TO_HZ,
   SFX_CRINKLE_BURSTS,
   SFX_CRINKLE_BURST_MS,
   SFX_CRINKLE_Q,
@@ -40,6 +52,11 @@ import {
 // An exponential ramp can never reach zero, so decays land here instead.
 const SILENT = 0.0001
 const ATTACK = SFX_ATTACK_MS / 1000
+// How quickly a hum slides to a new level. Short enough to track walking
+// toward a fan, long enough not to step.
+const HUM_GLIDE = 0.08
+
+type Hum = { gain: GainNode; asked: boolean }
 
 /**
  * Every sound is synthesised: a burst of white noise pushed through a
@@ -53,6 +70,7 @@ export class Audio {
   private master: GainNode | null = null
   private noise: AudioBuffer | null = null
   private played = 0
+  private hums = new Map<string, Hum>()
 
   /**
    * Open the context from a real gesture handler. Creating it from inside
@@ -104,6 +122,47 @@ export class Audio {
     this.crinkle(SFX_UNFOLD_FROM_HZ, SFX_UNFOLD_TO_HZ, SFX_UNFOLD_GAIN)
   }
 
+  /** The sword folding: a bright sweep upward. */
+  whoosh(): void {
+    this.noiseHit(
+      SFX_WHOOSH_FROM_HZ,
+      SFX_WHOOSH_TO_HZ,
+      SFX_WHOOSH_MS,
+      SFX_WHOOSH_Q,
+      SFX_WHOOSH_GAIN,
+    )
+  }
+
+  /**
+   * The pickup: the spec's three-note arpeggio. The only voice here that is
+   * a tone rather than filtered noise, so it is the only one with an
+   * oscillator — and the only one whose gain is arithmetic, because a
+   * triangle wave's level is exactly its peak over root three.
+   */
+  arpeggio(): void {
+    const ctx = this.wake()
+    if (!ctx || !this.master) return
+    this.played++
+
+    const dur = SFX_PICKUP_NOTE_MS / 1000
+    for (let i = 0; i < SFX_PICKUP_NOTES.length; i++) {
+      const at = ctx.currentTime + (i * SFX_PICKUP_STEP_MS) / 1000
+      const osc = ctx.createOscillator()
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(SFX_PICKUP_NOTES[i], at)
+
+      const env = ctx.createGain()
+      env.gain.setValueAtTime(SILENT, at)
+      env.gain.linearRampToValueAtTime(SFX_PICKUP_GAIN, at + Math.min(ATTACK, dur / 2))
+      env.gain.exponentialRampToValueAtTime(SILENT, at + dur)
+
+      osc.connect(env)
+      env.connect(this.master)
+      osc.start(at)
+      osc.stop(at + dur)
+    }
+  }
+
   respawn(): void {
     this.noiseHit(
       SFX_RESPAWN_FROM_HZ,
@@ -112,6 +171,72 @@ export class Audio {
       SFX_RESPAWN_Q,
       SFX_RESPAWN_GAIN,
     )
+  }
+
+  /**
+   * A continuous low loop at `level` (0 to 1), for a fan. Unlike every other
+   * voice here this one never stops: it is built once and then its gain is
+   * slid about, which is what "volume follows distance" needs. It runs into
+   * the master gain, so M mutes it with everything else.
+   */
+  hum(id: string, level: number): void {
+    const ctx = this.wake()
+    if (!ctx || !this.master || !this.noise) return
+
+    let hum = this.hums.get(id)
+    if (!hum) {
+      const src = ctx.createBufferSource()
+      src.buffer = this.noise
+      src.loop = true
+
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.frequency.value = FAN_HUM_HZ
+      filter.Q.value = FAN_HUM_Q
+
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+
+      src.connect(filter)
+      filter.connect(gain)
+      gain.connect(this.master)
+      src.start()
+      hum = { gain, asked: true }
+      this.hums.set(id, hum)
+    }
+
+    hum.asked = true
+    const want = Math.max(0, Math.min(1, level)) * FAN_HUM_GAIN
+    hum.gain.gain.setTargetAtTime(want, ctx.currentTime, HUM_GLIDE)
+  }
+
+  /**
+   * Fade out any hum nothing asked for this frame. Entities outside the
+   * current room stop updating, so without this a fan would keep humming
+   * at whatever level it was at when you left the room.
+   */
+  humSweep(): void {
+    if (!this.ctx) return
+    for (const hum of this.hums.values()) {
+      if (!hum.asked) hum.gain.gain.setTargetAtTime(0, this.ctx.currentTime, HUM_GLIDE)
+      hum.asked = false
+    }
+  }
+
+  /**
+   * Freeze or unfreeze the whole graph, for the pause overlay.
+   *
+   * Suspending stops the fan's loop, any decaying tail, and currentTime
+   * itself, so a resume continues at exactly the level it left off with and
+   * there is no bookkeeping to get wrong. Note that every voice calls
+   * wake(), which resumes a suspended context — so anything that plays a
+   * sound while paused would unfreeze it.
+   */
+  setPaused(paused: boolean): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    if (paused) ctx.suspend().catch(() => {})
+    else ctx.resume().catch(() => {})
   }
 
   /** Returns the new state, so the caller can report it. */

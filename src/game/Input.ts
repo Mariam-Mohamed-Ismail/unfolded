@@ -20,7 +20,11 @@ export class Input {
   private muteKeys: Phaser.Input.Keyboard.Key[]
   private debugKeys: Phaser.Input.Keyboard.Key[]
   private resetKeys: Phaser.Input.Keyboard.Key[]
+  private swordKeys: Phaser.Input.Keyboard.Key[]
+  private slashKeys: Phaser.Input.Keyboard.Key[]
+  private pauseKeys: Phaser.Input.Keyboard.Key[]
   private panelKeys: Phaser.Input.Keyboard.Key[][]
+  private pointer: Phaser.Input.Pointer
 
   /** -1 left, 0 none, 1 right. Holding both cancels to 0. */
   dir = 0
@@ -50,6 +54,19 @@ export class Input {
 
   /** True only on the frame Backspace goes down. */
   resetPressed = false
+
+  /** True only on the frame R goes down: toggles the sword. */
+  swordPressed = false
+
+  /** True only on the frame J or the left mouse button goes down. */
+  slashPressed = false
+
+  /** True only on the frame Esc goes down. */
+  pausePressed = false
+
+  private swordHeld = false
+  private slashHeld = false
+  private pauseHeld = false
 
   /**
    * Debug panel edges: move the cursor, nudge by one step, nudge by ten.
@@ -81,6 +98,12 @@ export class Input {
     this.muteKeys = [kb.addKey('M')]
     this.debugKeys = [kb.addKey('F1')]
     this.resetKeys = [kb.addKey('BACKSPACE')]
+    this.swordKeys = [kb.addKey('R')]
+    this.slashKeys = [kb.addKey('J')]
+    this.pauseKeys = [kb.addKey('ESC')]
+    // Polled rather than listened for, so a click lands on a frame like
+    // every other input instead of arriving between two.
+    this.pointer = scene.input.activePointer
     this.panelKeys = [
       [kb.addKey('COMMA')],
       [kb.addKey('PERIOD')],
@@ -120,6 +143,18 @@ export class Input {
     const reset = anyDown(this.resetKeys)
     this.resetPressed = reset && !this.resetHeld
     this.resetHeld = reset
+
+    const sword = anyDown(this.swordKeys)
+    this.swordPressed = sword && !this.swordHeld
+    this.swordHeld = sword
+
+    const slash = anyDown(this.slashKeys) || this.pointer.leftButtonDown()
+    this.slashPressed = slash && !this.slashHeld
+    this.slashHeld = slash
+
+    const pause = anyDown(this.pauseKeys)
+    this.pausePressed = pause && !this.pauseHeld
+    this.pauseHeld = pause
 
     const edges: boolean[] = []
     for (let i = 0; i < this.panelKeys.length; i++) {

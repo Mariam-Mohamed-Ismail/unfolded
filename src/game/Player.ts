@@ -76,6 +76,13 @@ export type PlayerState =
 export type Solid = { x: number; y: number; w: number; h: number }
 
 /**
+ * Moving air. Inside one, gravity is ignored and vertical speed is driven
+ * toward `vy` at `accel` instead. The player asks the level for this the
+ * same way it asks for solids, rather than a fan reaching in and pushing.
+ */
+export type Updraft = { vy: number; accel: number }
+
+/**
  * Hand-written controller. Position is the centre of the box; collision is
  * resolved one axis at a time against plain rectangles.
  */
@@ -218,7 +225,12 @@ export class Player {
   }
 
   /** `dt` is in seconds. */
-  update(dt: number, input: Input, solids: Solid[]): void {
+  update(
+    dt: number,
+    input: Input,
+    solids: Solid[],
+    lift: Updraft | null = null,
+  ): void {
     this.clearEvents()
     this.dir = input.dir
     if (input.dir !== 0) this.facing = input.dir
@@ -267,7 +279,7 @@ export class Player {
       this.runX(dt, input.dir)
     }
     this.jump(dt)
-    this.gravity(dt)
+    this.gravity(dt, lift)
 
     this.moveX(this.vx * dt, solids)
     this.moveY(this.vy * dt, solids)
@@ -476,7 +488,16 @@ export class Player {
     }
   }
 
-  private gravity(dt: number): void {
+  private gravity(dt: number, lift: Updraft | null = null): void {
+    if (lift) {
+      // Moving air replaces gravity rather than fighting it: vertical speed
+      // is driven toward the draught's own speed and held there.
+      const step = lift.accel * dt
+      if (Math.abs(lift.vy - this.vy) <= step) this.vy = lift.vy
+      else this.vy += Math.sign(lift.vy - this.vy) * step
+      return
+    }
+
     // Heavier on the way down, which is what makes the arc feel snappy.
     const g = this.vy > 0 ? GRAVITY * FALL_GRAVITY_MULT : GRAVITY
     this.vy = Math.min(this.vy + g * dt, MAX_FALL_SPEED)

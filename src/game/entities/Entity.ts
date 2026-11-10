@@ -1,6 +1,6 @@
 import type * as Phaser from 'phaser'
 import type { EntitySpec } from '../levels/types.ts'
-import type { Solid } from '../Player.ts'
+import type { Solid, Updraft } from '../Player.ts'
 import { TILE } from '../constants.ts'
 
 /**
@@ -24,16 +24,62 @@ export type Box = { left: number; right: number; top: number; bottom: number }
  * What an entity can make happen in the world, as plain functions, so a
  * component never imports Particles, Camera or Audio — or Phaser.
  */
+/** The one-shot voices an entity can ask for by name. */
+export type SoundName = 'fold' | 'pickup' | 'whoosh'
+
 export type Fx = {
   dust: (x: number, y: number, count: number, color?: number) => void
   shake: (px: number, ms: number) => void
-  /** The paper crinkle, for anything that folds. */
-  fold: () => void
+  /** A short zoom pulse on the camera. */
+  zoom: () => void
+  /** One of the voices, by name, rather than a method per voice. */
+  sound: (name: SoundName) => void
+  /**
+   * Put a line of text on screen, centred on (x, y), until the next frame.
+   * The scene keeps one Text object per id and hides any it is not asked
+   * for, which is how an entity shows words without owning a game object.
+   */
+  label: (
+    id: string,
+    x: number,
+    y: number,
+    text: string,
+    size: number,
+    alpha: number,
+  ) => void
+  /**
+   * A continuous sound at `level` (0 to 1) until the next frame. Like a
+   * label, anything that stops asking is faded out by the scene.
+   */
+  hum: (id: string, level: number) => void
 }
+
+/**
+ * What an entity can perceive about the player. A pressure plate needs only
+ * the box; a tutorial tag needs to know what they just did.
+ */
+export type PlayerSense = {
+  box: Box
+  grounded: boolean
+  /** |vx|, so "are they running" is one comparison. */
+  speed: number
+  jumped: boolean
+  dashed: boolean
+  folded: boolean
+  /** The R edge: toggle the sword. */
+  sword: boolean
+  /** The J or left-click edge: slash. */
+  slash: boolean
+  /** Where the player just failed, if they did this frame. */
+  failedAt: number | null
+}
+
+/** The button edges the level feeds in, since they come from Input. */
+export type Buttons = { sword: boolean; slash: boolean }
 
 /** What an entity can see each frame. One object, reused by Level. */
 export type EntityWorld = {
-  player: Box
+  player: PlayerSense
   fx: Fx
 }
 
@@ -138,6 +184,22 @@ export class Entity {
    * are. Anything that does not respond ignores it.
    */
   trigger(_delay: number): void {}
+
+  /**
+   * Has this thing been used yet? The read-side twin of trigger(): it lets a
+   * tutorial tag know its lesson has landed without knowing what taught it.
+   */
+  done(): boolean {
+    return false
+  }
+
+  /**
+   * Is this thing moving the air where `box` is? The player asks the level
+   * for this each frame, so a draught never has to reach into the player.
+   */
+  draughtAt(_box: Box): Updraft | null {
+    return null
+  }
 
   /** Current state as plain data, for debugging and for the F1 overlay. */
   serialize(): EntitySnapshot {
