@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import { Audio } from '../Audio.ts'
 import { Flow } from '../Flow.ts'
+import { Records } from '../Records.ts'
 
 /**
  * Nothing to load — every pixel in this game is drawn in code — so Boot is
@@ -20,8 +21,12 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     const audio = new Audio()
     const flow = new Flow(this.game)
+    // Session memory: what the player has managed in each room. Here for
+    // the same reason as the other two — it has to outlive a scene.
+    const records = new Records()
     this.registry.set('audio', audio)
     this.registry.set('flow', flow)
+    this.registry.set('records', records)
     // Straight through, with no fade: there is nothing to fade from.
     this.scene.start('MainMenu')
   }

@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import { Menu } from '../ui/Menu.ts'
+import { formatTime } from '../ui/format.ts'
 import type { FinishedPayload, Flow } from '../Flow.ts'
 import {
   COLOR_INK,
@@ -11,14 +12,6 @@ import {
 } from '../constants.ts'
 
 const INK = '#' + COLOR_INK.toString(16).padStart(6, '0')
-
-/** m:ss, which is the right shape for a five-minute level. */
-export function formatTime(seconds: number): string {
-  const whole = Math.max(0, Math.floor(seconds))
-  const m = Math.floor(whole / 60)
-  const s = whole % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 /** What the scene shows under the title, from the payload alone. */
 export function summarise(stats: FinishedPayload): string {

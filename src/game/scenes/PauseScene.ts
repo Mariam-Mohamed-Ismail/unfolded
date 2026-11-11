@@ -1,8 +1,10 @@
 import * as Phaser from 'phaser'
 import { CONTROLS } from '../ui/controls.ts'
 import { Menu } from '../ui/Menu.ts'
-import { roomChoices } from '../levels/index.ts'
+import { roomGroups } from '../levels/index.ts'
+import { roomLabel } from '../Records.ts'
 import type { Audio } from '../Audio.ts'
+import type { Records } from '../Records.ts'
 import type { MenuItem } from '../ui/Menu.ts'
 import {
   COLOR_INK,
@@ -16,6 +18,7 @@ import {
   PAUSE_TITLE_Y,
   PAUSE_TOP,
   PAUSE_TOP_LIST,
+  PAUSE_TOP_ROOMS,
   SUBTITLE_FONT_PX,
   TITLE_FONT_PX,
 } from '../constants.ts'
@@ -37,8 +40,17 @@ export class PauseScene extends Phaser.Scene {
   private panel!: Phaser.GameObjects.Graphics
   private list!: Phaser.GameObjects.Text
   private page: Page = 'main'
-  private esc: Phaser.Input.Keyboard.Key[] = []
-  private escHeld = true
+  /**
+   * Esc starts disarmed and a release arms it.
+   *
+   * It is the one key that cannot start armed: the press that opened this
+   * overlay is still down, and this scene's Key object was created after
+   * that keydown so it reads up. Polling would therefore see the browser's
+   * key-repeat as a brand new press and close the overlay on its own. You
+   * have to let go of Esc before it closes — which is what you were going
+   * to do anyway.
+   */
+  private escArmed = false
 
   constructor() {
     super('Pause')
@@ -68,20 +80,22 @@ export class PauseScene extends Phaser.Scene {
       .setDepth(5)
 
     const kb = this.input.keyboard
-    if (kb) this.esc = [kb.addKey('ESC')]
-    // Starts held: the press that opened this overlay is still down on this
-    // first frame, and reading it as a new press would close it instantly.
-    this.escHeld = true
+    if (kb) {
+      kb.on('keyup-ESC', () => {
+        this.escArmed = true
+      })
+      kb.on('keydown-ESC', () => {
+        if (!this.escArmed) return
+        this.escArmed = false
+        this.back()
+      })
+    }
 
     this.menu = new Menu(this, PAUSE_TOP)
     this.show('main')
   }
 
   update(): void {
-    const down = this.esc.some((k) => k.isDown)
-    if (down && !this.escHeld) this.back()
-    this.escHeld = down
-
     this.menu.update()
     this.drawPanel()
   }
@@ -96,7 +110,14 @@ export class PauseScene extends Phaser.Scene {
     this.page = page
     this.list.setText(page === 'controls' ? CONTROLS.join('\n') : '')
     this.list.setVisible(page === 'controls')
-    this.menu.setTop(page === 'controls' ? PAUSE_TOP_LIST : PAUSE_TOP)
+    this.menu.setCompact(page === 'rooms')
+    this.menu.setTop(
+      page === 'rooms'
+        ? PAUSE_TOP_ROOMS
+        : page === 'controls'
+          ? PAUSE_TOP_LIST
+          : PAUSE_TOP,
+    )
     this.menu.setItems(this.itemsFor(page))
   }
 
@@ -105,11 +126,21 @@ export class PauseScene extends Phaser.Scene {
     const audio = this.registry.get('audio') as Audio
 
     if (page === 'rooms') {
-      const items: MenuItem[] = roomChoices().map((choice) => ({
-        label: () => choice.name,
-        choose: () =>
-          events.emit('game:restart', { level: choice.level, roomId: choice.room }),
-      }))
+      const records = this.registry.get('records') as Records
+      const items: MenuItem[] = []
+      for (const group of roomGroups()) {
+        items.push({ label: () => group.name })
+        for (const choice of group.choices) {
+          items.push({
+            label: () => roomLabel(choice.name, records?.get(choice.room)),
+            choose: () =>
+              events.emit('game:restart', {
+                level: choice.level,
+                roomId: choice.room,
+              }),
+          })
+        }
+      }
       items.push({ label: () => 'Back', choose: () => this.show('main') })
       return items
     }

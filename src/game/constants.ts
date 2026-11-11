@@ -386,6 +386,13 @@ export const SFX_WHOOSH_MS = 160
 export const SFX_WHOOSH_Q = 1.5
 export const SFX_WHOOSH_GAIN = 3.9
 
+// --- Level 2: a cooler palette ---
+// The level data picks which palette it uses; the values live here, like
+// every other number.
+export const COLOR_L2_BG = 0xd4dee8
+// Deeper than Level 1's purple so it still reads on the cooler background.
+export const COLOR_L2_FOLD = 0x6b5fc4
+
 // --- Step 16: scenes, menus and the HUD ---
 export const FADE_MS = 220
 
@@ -398,6 +405,14 @@ export const MENU_FOLD_PX = 10
 export const MENU_TOP = 250
 // Where the buttons sit on a page that has a list above them.
 export const MENU_TOP_LIST = 352
+
+// A long page — room select, with every level's rooms under a heading —
+// needs shorter rows to fit on a 540px screen.
+export const MENU_H_SMALL = 32
+export const MENU_GAP_SMALL = 7
+export const MENU_HEAD_H = 26
+export const MENU_TOP_ROOMS = 74
+export const PAUSE_TOP_ROOMS = 120
 export const TITLE_FONT_PX = 58
 export const TITLE_Y = 130
 export const SUBTITLE_FONT_PX = 15

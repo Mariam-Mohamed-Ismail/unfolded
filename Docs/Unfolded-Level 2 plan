@@ -1,0 +1,4 @@
+Phase 1 – Level 2 puzzles
+Step L2-1 – Level 2 skeleton
+Goal: Level 2 exists in the game with its three empty rooms, a new colour palette, and shows up in both room selects.
+Test: you can pick 2A, 2B or 2C from the main menu and the pause menu, spawn on a floor at the right place, and Level 1 still works.

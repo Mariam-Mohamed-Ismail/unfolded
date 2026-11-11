@@ -26,4 +26,37 @@ const config: Phaser.Types.Core.GameConfig = {
   audio: { noAudio: true },
 }
 
+/**
+ * Show errors on the page instead of losing them.
+ *
+ * Phaser drives the game from a requestAnimationFrame callback, and an
+ * exception thrown inside it means the next frame is never requested: the
+ * loop stops for good and all you see is a blank canvas with no clue why.
+ * This puts the message where it cannot be missed.
+ */
+function showError(what: string): void {
+  const box = document.createElement('pre')
+  box.textContent = `Unfolded crashed:\n\n${what}\n\nReload the page to restart.`
+  box.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'margin:0',
+    'padding:24px',
+    'z-index:9999',
+    'background:#2b2a33',
+    'color:#f7f2e8',
+    'font:13px/1.5 monospace',
+    'white-space:pre-wrap',
+    'overflow:auto',
+  ].join(';')
+  document.body.appendChild(box)
+}
+
+window.addEventListener('error', (e) => {
+  showError(e.error?.stack ?? e.message)
+})
+window.addEventListener('unhandledrejection', (e) => {
+  showError(`unhandled promise rejection: ${e.reason?.stack ?? e.reason}`)
+})
+
 new Phaser.Game(config)

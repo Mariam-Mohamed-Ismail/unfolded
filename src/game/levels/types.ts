@@ -69,10 +69,27 @@ export type RoomSpec = {
   checkpoint: string
 }
 
+/**
+ * A level's colours. The spec keeps the colour language across levels but
+ * shifts the background and the purple, so this belongs to the level rather
+ * than being one set of module constants.
+ */
+export type Palette = {
+  bg: number
+  /** Folds and switches. */
+  fold: number
+  wind: number
+  /** Seals, slits and pickups. */
+  form: number
+}
+
 export type LevelData = {
+  /** Shown as the heading in Room select. */
+  name: string
   width: number
   height: number
   floorRow: number
+  palette: Palette
   spawn: { x: number; h: number }
   solids: SolidSpec[]
   entities: EntitySpec[]

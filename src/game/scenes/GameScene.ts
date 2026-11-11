@@ -8,6 +8,7 @@ import { Level } from '../Level.ts'
 import { Particles } from '../Particles.ts'
 import { Player } from '../Player.ts'
 import { LEVELS } from '../levels/index.ts'
+import type { Records } from '../Records.ts'
 import type { Audio } from '../Audio.ts'
 import type { Flow } from '../Flow.ts'
 import type { GameStart } from '../Flow.ts'
@@ -46,6 +47,11 @@ export class GameScene extends Phaser.Scene {
   /** Seconds since this run began, and how many resets it took. */
   private elapsed = 0
   private resets = 0
+  /** The same two numbers for the room the player is in right now. */
+  private roomId: string | null = null
+  private roomTime = 0
+  private roomResets = 0
+  private records!: Records
   /** Latched, so finishing is reported once rather than every frame. */
   private reported = false
 
@@ -57,6 +63,9 @@ export class GameScene extends Phaser.Scene {
     this.start = data ?? {}
     this.elapsed = 0
     this.resets = 0
+    this.roomId = null
+    this.roomTime = 0
+    this.roomResets = 0
     this.reported = false
   }
 
@@ -64,8 +73,13 @@ export class GameScene extends Phaser.Scene {
     const flow = this.registry.get('flow') as Flow
     flow.enter(this)
     this.audio = this.registry.get('audio') as Audio
+    this.records = this.registry.get('records') as Records
 
-    this.level = new Level(LEVELS[this.start.level ?? 0] ?? LEVELS[0])
+    const data = LEVELS[this.start.level ?? 0] ?? LEVELS[0]
+    this.level = new Level(data)
+    // Per level rather than on the game config, which is what lets Level 2
+    // sit on a cooler background while Level 1 keeps its mint.
+    this.cameras.main.setBackgroundColor(data.palette.bg)
     this.level.draw(this)
     // After the static floor and before the player, so a step that unfolds
     // sits on top of the ground and behind the figure.
@@ -163,6 +177,18 @@ export class GameScene extends Phaser.Scene {
     // what has been built.
     if (this.player.y > this.level.heightPx + TILE * 2) this.respawn()
 
+    // Per-room timing. The room the player is in owns the seconds, and a
+    // change of room banks the visit that just ended — either direction, so
+    // walking back into 1A banks the 1B attempt.
+    const room = this.level.room()
+    if (room && room.id !== this.roomId) {
+      this.bankRoom()
+      this.roomId = room.id
+      this.roomTime = 0
+      this.roomResets = 0
+    }
+    this.roomTime += dt
+
     this.hud.update(
       this.level.room()?.name ?? '',
       this.elapsed,
@@ -180,6 +206,8 @@ export class GameScene extends Phaser.Scene {
     // scene comes next is Flow's business, not this one's.
     if (!this.reported && this.level.finished()) {
       this.reported = true
+      // The room you finished in counts as a finished visit.
+      this.bankRoom()
       this.game.events.emit('level:finished', {
         time: this.elapsed,
         resets: this.resets,
@@ -187,8 +215,19 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Bank the visit that just ended. Quitting mid-room never reaches this,
+   * which is deliberate: an unfinished visit is not a record.
+   */
+  private bankRoom(): void {
+    if (this.roomId === null) return
+    this.records.submit(this.roomId, this.roomTime, this.roomResets)
+  }
+
   private respawn(): void {
     this.resets++
+    // Against the room it happened in, not the room you respawn into.
+    this.roomResets++
     // Reported before the player is moved, so a prompt counts the failure
     // where it happened rather than at the checkpoint.
     this.level.failedAt(this.player.x)

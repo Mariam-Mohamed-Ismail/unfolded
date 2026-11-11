@@ -7,7 +7,10 @@ import {
   MENU_FOLD_PX,
   MENU_FONT_PX,
   MENU_GAP,
+  MENU_GAP_SMALL,
   MENU_H,
+  MENU_HEAD_H,
+  MENU_H_SMALL,
   MENU_W,
 } from '../constants.ts'
 
@@ -21,7 +24,11 @@ const PAPER = '#' + COLOR_PAPER.toString(16).padStart(6, '0')
  */
 export type MenuItem = {
   label: () => string
-  choose: () => void
+  /**
+   * Absent makes this a heading: a row with nothing to do is a row you
+   * cannot select. The cursor steps over it and the mouse ignores it.
+   */
+  choose?: () => void
 }
 
 /**
@@ -39,13 +46,22 @@ export class Menu {
   private items: MenuItem[] = []
   private top: number
   private index = 0
+  private compact = false
 
   private up: Phaser.Input.Keyboard.Key[] = []
   private down: Phaser.Input.Keyboard.Key[] = []
-  private enter: Phaser.Input.Keyboard.Key[] = []
   private upHeld = false
   private downHeld = false
-  private enterHeld = false
+  /**
+   * Enter starts armed, and a release re-arms it.
+   *
+   * Edges come from keydown/keyup rather than from polling isDown, because
+   * keys are per scene: one created mid-hold reads up, and the browser's
+   * key-repeat then fires a keydown that polling cannot tell from a fresh
+   * press. Armed to begin with because Enter is never the key that opened
+   * a menu — unlike Esc on the pause overlay, which starts disarmed.
+   */
+  private enterArmed = true
   private clickHeld = false
   private pointerWas = { x: -1, y: -1 }
 
@@ -58,22 +74,35 @@ export class Menu {
     if (kb) {
       this.up = [kb.addKey('UP')]
       this.down = [kb.addKey('DOWN')]
-      this.enter = [kb.addKey('ENTER')]
+      kb.on('keyup-ENTER', () => {
+        this.enterArmed = true
+      })
+      kb.on('keydown-ENTER', () => {
+        if (!this.enterArmed) return
+        this.enterArmed = false
+        this.choose()
+      })
     }
 
-    // Seeded from the current state, not from false. A key already down when
-    // this is built — Enter as a scene starts, or the Esc that opened the
-    // pause overlay — must not read as a fresh press on the first frame.
+    // The cursor keys only move a highlight, so a stray repeat is harmless
+    // and polling is fine. The pointer is game-wide rather than per scene,
+    // so its current state is trustworthy and seeding it works.
     this.upHeld = anyDown(this.up)
     this.downHeld = anyDown(this.down)
-    this.enterHeld = anyDown(this.enter)
     this.clickHeld = scene.input.activePointer.leftButtonDown()
+  }
+
+  /** Shorter rows, for a page with too many items to fit otherwise. */
+  setCompact(compact: boolean): void {
+    this.compact = compact
   }
 
   /** Replaces the whole list, which is how the menu changes page. */
   setItems(items: MenuItem[]): void {
     this.items = items
-    this.index = 0
+    // Never start on a heading.
+    this.index = items.findIndex((i) => i.choose)
+    if (this.index < 0) this.index = 0
     for (const label of this.labels) label.destroy()
     this.labels = items.map(() =>
       this.scene.add
@@ -90,6 +119,11 @@ export class Menu {
   /** Moves the whole list, for a page that needs room above it. */
   setTop(y: number): void {
     this.top = y
+  }
+
+  /** Where row `i` sits, for a panel to size around or a pointer to aim at. */
+  boxOf(i: number): { x: number; y: number; w: number; h: number } {
+    return this.box(i)
   }
 
   /** The y the last button ends at, so a panel can be sized around it. */
@@ -110,14 +144,19 @@ export class Menu {
   }
 
   moveBy(step: number): void {
-    if (this.items.length === 0) return
     const n = this.items.length
-    this.index = (this.index + step + n) % n
+    if (n === 0) return
+    // Step over headings. The guard stops a list of nothing but headings
+    // from spinning for ever.
+    for (let tries = 0; tries < n; tries++) {
+      this.index = (this.index + step + n) % n
+      if (this.items[this.index].choose) return
+    }
   }
 
-  /** Runs the item under the cursor. */
+  /** Runs the item under the cursor. A heading has nothing to run. */
   choose(): void {
-    this.items[this.index]?.choose()
+    this.items[this.index]?.choose?.()
   }
 
   update(): void {
@@ -132,14 +171,24 @@ export class Menu {
     this.labels = []
   }
 
-  /** The box of item `i`, which is also what the mouse is tested against. */
+  /**
+   * The box of item `i`, which is also what the mouse is tested against.
+   * Rows are stacked rather than indexed, because a heading is shorter than
+   * a button.
+   */
   private box(i: number): { x: number; y: number; w: number; h: number } {
-    return {
-      x: (GAME_WIDTH - MENU_W) / 2,
-      y: this.top + i * (MENU_H + MENU_GAP),
-      w: MENU_W,
-      h: MENU_H,
-    }
+    let y = this.top
+    for (let k = 0; k < i; k++) y += this.rowH(k) + this.gap()
+    return { x: (GAME_WIDTH - MENU_W) / 2, y, w: MENU_W, h: this.rowH(i) }
+  }
+
+  private rowH(i: number): number {
+    if (!this.items[i]?.choose) return MENU_HEAD_H
+    return this.compact ? MENU_H_SMALL : MENU_H
+  }
+
+  private gap(): number {
+    return this.compact ? MENU_GAP_SMALL : MENU_GAP
   }
 
   private readKeys(): void {
@@ -150,10 +199,6 @@ export class Menu {
     const up = anyDown(this.up)
     if (up && !this.upHeld) this.moveBy(-1)
     this.upHeld = up
-
-    const enter = anyDown(this.enter)
-    if (enter && !this.enterHeld) this.choose()
-    this.enterHeld = enter
   }
 
   private readPointer(): void {
@@ -179,6 +224,7 @@ export class Menu {
 
   private hit(x: number, y: number): number {
     for (let i = 0; i < this.items.length; i++) {
+      if (!this.items[i].choose) continue
       const b = this.box(i)
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return i
     }
@@ -189,6 +235,18 @@ export class Menu {
     this.gfx.clear()
     for (let i = 0; i < this.items.length; i++) {
       const b = this.box(i)
+      const label = this.labels[i]
+
+      // A heading is just words: no paper, no outline, nothing to click.
+      if (!this.items[i].choose) {
+        if (label) {
+          const text = this.items[i].label()
+          if (label.text !== text) label.setText(text)
+          label.setPosition(b.x + b.w / 2, b.y + b.h / 2).setColor(INK)
+        }
+        continue
+      }
+
       const on = i === this.index
       const fold = MENU_FOLD_PX
       // A paper quad with the corner turned down, like the prompt tags.
@@ -205,7 +263,6 @@ export class Menu {
       this.gfx.strokePoints(points, true)
       this.gfx.lineBetween(b.x + b.w - fold, b.y, b.x + b.w, b.y + fold)
 
-      const label = this.labels[i]
       if (!label) continue
       const text = this.items[i].label()
       if (label.text !== text) label.setText(text)

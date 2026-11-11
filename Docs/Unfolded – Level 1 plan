@@ -59,4 +59,5 @@ Test: you can start the game, jump to any room directly, come back to the menu, 
 Step 17 – Pause menu
 Contents: Resume, Restart room, Room select, Controls, Sound on/off, Quit to main menu. Esc opens and closes it. The game freezes behind a soft darkened overlay and the player's input is blocked while it's open.
 Test: pausing mid-dash or mid-jump and resuming doesn't break the state, the timers don't keep counting while paused, music and fan hum pause with it, and Restart room puts everything back.
+Step 18 – Level complete screen
 

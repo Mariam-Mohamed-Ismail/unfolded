@@ -1,0 +1,151 @@
+Unfolded – Level 2 build 
+ It adds the sword, the bat, a small health system, the crease upgrade choice, and Level 2 "Creased" (three rooms). Level 1 must keep working exactly as it does now.
+Goal
+Extend Unfolded with Level 2, "Creased" (the medium tier). Level 1 taught movement and the three mechanics in isolation with no danger. Level 2 asks the player to combine small steps, use the sword, and handle the first enemy, the bat. Priority order: readable puzzles, fair and clear combat, game feel, then polish.
+Rules for working in the existing project
+• Keep Phaser 3, the same folder structure, the same constants.ts for every number, and the same data-driven approach: the level is a data file src/game/levels/level2.ts with an entity list, built by the same loader as Level 1.
+• Reuse the existing components (Switch, FoldPlatform, Fan, Slit, Checkpoint, PromptTag, ExitDoor) and add new ones the same way: Seal, Bat, plus a FoldWall. Don't rewrite Level 1 code unless something has to change, and if it does, tell me what and why.
+• No image or audio files. All art is drawn in code, all sound is Web Audio.
+• Add Level 2 to the main menu's Room select and the pause menu's Room select automatically from the level data: Level 2 shows rooms 2A, 2B and 2C.
+• The tutorial principles from Level 1 still apply: one new idea per space, prompts only where needed, safe to experiment, no skipping a lesson, never a text wall.
+What is new in Level 2
+1. The sword works. Draw it with R, slash with left click or J. It kills bats and cuts seals.
+2. Health. The player has 3 hits. This is new, because Level 1 had no danger.
+3. The bat. The first enemy.
+4. The Seal. A teal paper seal that only the sword can cut.
+5. The Fold Wall. A tall purple wall that a switch can fold flat.
+6. Timed fans. Fans that run on timers with a visible warning pulse.
+7. Crease choice. After Level 1 the player picks 1 of 2 upgrades.
+Sword and combat
+• R toggles the sword, as in Level 1. With the sword out, the orbiting pieces form the blade. With it away, they orbit the player.
+• Slash: left click or J. Wind-up 0.12 s, active hit 0.10 s, recovery 0.15 s, cooldown 0.35 s in total. The hit area is a rectangle in front of the player, 56 px wide, 36 px tall.
+• Can't slash while flat or dashing. Slashing in the air is allowed. While the slash is in its active frame the player moves at 60% speed.
+• Feedback on a hit: hit-stop 60 ms, screen shake 2 px for 80 ms, a burst of 5 triangle shards at the contact point, a short white flash on the target, knockback of 160 px/s on enemies that survive. Slash visual: a three-triangle arc trail that fades in 120 ms.
+• Sword sounds: swoosh (noise sweep 1500 to 400 Hz over 90 ms), hit (short low crunch), seal cut (tear: noise burst with descending pitch).
+Player health
+• 3 hits, shown as three small triangles under the room name in the top-left. A lost one cracks and fades.
+• When hit: damage 1, knockback 240 px/s away from the attacker plus 200 px/s upward, 1.0 s of invulnerability with a blink, screen shake 3 px for 100 ms, hit-stop 100 ms, a low thud with a dropping pitch, and a brief red-pink tint at the screen edges.
+• At 0 hits the player bursts into triangles and re-folds at the room's checkpoint with full health, the room resets, and the reset counter goes up.
+• Health fully refills at every checkpoint and at the start of a room.
+The bat
+Look. Low-poly like the reference: slate body #5F7F8C, darker wing facets #3F5865, pink ears #E88A8A, thin dark outline. Body triangle, two wings of three triangles each, two ear triangles. Hitbox 28×20 px. The wings flap by rotating their triangles.
+Behaviour, as a state machine with five states:
+State
+What it does
+Duration and numbers
+Hang
+Hangs from a ceiling strip with wings folded, gently swaying
+Until the player enters its range
+Alert
+Wings flash white and open, a small "!" paper tag pops above it, a two-note sting plays (880 Hz then 660 Hz sine)
+0.5 s. This is the telegraph.
+Dive
+Swoops along a curve from the ceiling toward the position the player had when the alert ended, passing through it and rising on the far side
+Speed 380 px/s, about 0.9 s
+Stunned
+If it hit the floor or a wall without striking the player, it is stuck there. This is the player's attack window.
+0.8 s
+Return
+Flies back to its ceiling strip and re-hangs
+0.8 s, then a 1.5 s cooldown before it can alert again
+• Range: the bat alerts when the player is within 7 tiles horizontally and 6 tiles vertically, and the player is not hiding under a slit pillar. A player who is flat inside a slit is ignored, so nobody gets attacked while stuck.
+• Health: 1. One sword hit kills it. It bursts into triangles, with a crunch and a small spark.
+• Damage: 1 hit if the bat touches the player during its dive. It does no damage in other states.
+• Wind: a bat inside a fan's draught is pushed upward (acceleration 1200 px/s²), so the dive path bends. Make the bat's own physics respect fan columns.
+• Fairness: the dive target is locked at the end of the alert, so a player who moves after the alert flash can always dodge. Never let the bat track the player during the dive.
+• A killed bat stays dead until the room is reset.
+The Seal
+• A teal vertical strip, 1 tile wide, drawn as paper tape with a cross pattern, filling the passage from the floor up to a small ceiling block, so it can't be jumped over.
+• Only the sword cuts it. Bats and everything else leave it alone.
+• With the sword out and the player within 3 tiles, a small prompt "Cut it" appears and the seal glows. With no sword out, the prompt reads "R: draw sword".
+• Cut feedback: hit-stop 60 ms, shake 3 px, the seal splits into 8 triangle shards that fall and fade, a tearing sound, and collision turns off immediately.
+The Fold Wall
+• A tall purple wall, 1 tile wide and 9 tiles high, solid.
+• When its linked switch is pressed it tips over around its base crease and lies flat on the floor over 0.4 s, with angle-based shading and a dust burst. Afterward it is a thin 4 px floor the player can walk over.
+Fans on timers
+• Reuse Fan, add onStart, onDuration and period in seconds. A fan creates its draught only while it is on.
+• Warning: the last 0.4 s before a fan turns off, its blades slow, the amber particles flicker, and the hum drops. When it turns on, the blades spin up and a small burst of particles shoots up the column.
+• The column's outline is drawn dashed when off and solid when on, so the player can tell at a glance.
+Crease upgrade choice
+After the Level 1 exit door, before Level 2 starts, show a "Choose a crease" screen with two paper cards. The player picks one with arrows and Enter or by clicking. The choice is kept for the session and a small icon shows it under the health in the HUD.
+Crease
+Effect
+Glider fold
+Holding Space while falling caps the fall speed at 120 px/s and shows a small folded-wing shape on the player's back. It forgives timing in wind rooms.
+Keen edge
+The sword's hit area grows from 56 px to 80 px wide and the blade looks longer. The player can cut seals from 2.5 tiles away.
+No room requires a crease. If Level 2 is started from the menu without having done Level 1, show the choice screen first.
+Visual style for Level 2
+Same paper style as Level 1, with a cooler palette: background soft blue-grey #D4DEE8 with a faint fold-line grid, platforms cream #F7F2E8 with a dark outline #2B2A33. Keep the colour language: purple #6B5FC4 for folds and switches (deeper than in Level 1 so it reads on the cooler background), amber #F0A93B for wind, teal #2FA58A for seals and slits, slate and pink for the bat.
+Level 2 layout
+World is 96 tiles wide and 18 tall. The main floor surface is at row 14 (y = 448 px). h means tiles above the main floor, negative is below. Every room has a checkpoint at its entrance.
+Room 2A: Fold, two switches (x 0 to 30)
+Goal of the room: get through a tall wall by doing two things in the right order.
+• Floor h=0 from x 0 to 30. Checkpoint at x 1, spawn at x 2.
+• Switch S1 (latching pressure plate) at x 4, purple.
+• Folded stairs: step 1 at x 9–10 with its top at h=1, step 2 at x 12–13 with its top at h=2. Both start folded (dashed ghost, no collision).
+• High ledge at x 15–19 with its top at h=3 (96 px). It can't be reached by a jump alone (the jump is about 87 px).
+• Switch S2 on the ledge at x 17, purple.
+• Fold Wall at x 24, 9 tiles high, blocking the floor path.
+• Links: S1 unfolds both steps (0.12 s apart). S2 folds the wall flat and also folds both steps back (in reverse order, 0.12 s apart). Draw the dotted link lines from each switch to everything it controls, so the player can read the cause and effect, and flash them when a switch is pressed.
+• Solution: press S1, climb the stairs to the ledge, press S2, drop to the floor (3 tiles, safe), walk over the flattened wall.
+• Why it's Medium: two linked actions in order, and the second action removes the way you came up. The player must plan before pressing S2.
+• No softlock: after S2 the player is back on the floor with the wall open. If they press S2 while standing on a step, the step folds and they simply fall to the floor.
+Room 2B: Slit, seal and bat (x 30 to 62)
+Goal of the room: squeeze through, face the bat, then cut the exit open.
+• Floor h=0 from x 30 to 62. Checkpoint at x 31. A prompt "R: draw sword" at x 32 the first time the sword is available, then "Click or J: slash".
+• Slit pillar at x 36–42 (6 tiles long, 7 tiles tall, 14 px clearance). Same as Level 1.
+• Bat arena: from x 42 to x 50, 8 tiles wide, with a high open ceiling.
+• Bat hanging from a paper ceiling strip at x 44–47, anchor at h=7.5. The bat ignores the player while they are flat under the pillar, and wakes as they come out and unfold.
+• Seal at x 50, floor to h=8, with a small ceiling block above it so it can't be jumped over.
+• The floor continues past the seal to x 62, the exit of the room.
+• Solution: slide through the slit, unfold at the exit, deal with the bat (kill it, or dodge its dive and cut the seal in the stunned window), cut the seal, walk on.
+• Why it's Medium: the player can't use the sword while flat, so the form change and the combat have to be sequenced. The bat's range starts right where the slit ends.
+• Keen edge alternative: with the longer sword the player can cut the seal from the far side of the arena, at x 47 or beyond the bat's dive path, instead of crossing the whole arena.
+Room 2C: Wind with timed fans and a bat (x 62 to 96)
+Goal of the room: cross a long pit by chaining two fans that take turns.
+• Floor h=0 from x 62 to 66. Checkpoint at x 63.
+• Pit from x 66 to 84 (18 tiles wide), floor at h=−2, safe, and the player can jump out of it on the left.
+• Fan A at x 71–72. Fan B at x 78–79. Both have a draught column 8 tiles tall from the pit floor (top at h=6).
+• Timing, with a 6 s period: Fan A on from 0 s for 3.4 s. Fan B on from 3 s for 3.4 s. That gives a 0.4 s overlap where both are on, twice per period. Both show the 0.4 s warning before turning off.
+• High platform at x 84–96 with its top at h=4 (128 px). It can't be reached by jumping from the floor or from the pit floor.
+• Bat hanging from a ceiling strip at x 73–77, anchor at h=8, in the middle of the pit. It alerts when the player rises toward it. Its dive bends in the draught.
+• Exit door at x 94 on the platform.
+• Solution: ride Fan A up while it's on, move right and dash toward Fan B as it turns on during the overlap, ride B up, steer right and land on the platform. Handle or dodge the bat on the way.
+• Why it's Medium: timing across two systems, with an enemy applying pressure in the middle.
+• Glider fold: makes the handover between the fans much more forgiving, but it doesn't create a shortcut.
+Level data
+Write level2.ts in the same shape as level1.ts. A few examples of the new entities:
+{ id: 'foldwall1', type: 'FoldWall', x: 24, w: 1, h: 9 },
+{ id: 'sw1', type: 'Switch', x: 4, h: 0, targets: ['stair1', 'stair2'] },
+{ id: 'sw2', type: 'Switch', x: 17, h: 3, targets: ['foldwall1', 'stair1', 'stair2'], mode: 'fold' },
+{ id: 'seal1', type: 'Seal', x: 50, floorH: 0, topH: 8 },
+{ id: 'bat1', type: 'Bat', anchorX: 45.5, anchorH: 7.5, rangeX: 7, rangeY: 6 },
+{ id: 'fanA', type: 'Fan', x: 71, w: 2, floorH: -2, columnH: 8, onStart: 0, onDuration: 3.4, period: 6 },
+{ id: 'fanB', type: 'Fan', x: 78, w: 2, floorH: -2, columnH: 8, onStart: 3, onDuration: 3.4, period: 6 }
+Every number in this document that is a feel or balance value goes in constants.ts.
+Prompts, hints and tutorial
+Short paper tags only, shown near the place where they apply and faded after use:
+• 2A at x 6: "Step on it" is not needed. Instead at x 15 on the ledge: "This folds things back" (a soft warning that S2 also folds the stairs).
+• 2B at x 32: "R: draw sword", then "Click or J: slash". At x 43: "Watch its wings" when the bat is first seen. At x 48: "Cut it" (as the seal prompt).
+• 2C at x 64: "Fans take turns".
+• After 3 failures at a spot, its tag reappears with a gentle pulse. Never solve it for the player.
+HUD and menus
+• HUD: room name, reset counter and timer as in Level 1, plus the three health triangles and the crease icon.
+• Main menu and pause menu Room select: show Level 1 and Level 2 grouped, and let the player jump to any room directly.
+• Level complete screen after 2C: time, resets, hits taken, and the same two buttons. Also pick the second crease choice here later (not in this build).
+Acceptance checklist
+• Level 1 still works exactly as before.
+• The sword draws with R and slashes with click or J, with clear feedback, and can't be used while flat or dashing.
+• The player has 3 hits, takes knockback, gets 1 s of invulnerability, and dying resets the room and the bat.
+• The bat's alert, dive, stun and return are clearly readable, the dive target is locked after the alert, one hit kills it, and it ignores the player while flat under the pillar.
+• 2A can't be finished without pressing S1 then S2, and S2 visibly folds both the wall and the stairs.
+• 2B can only be passed by sliding through the slit, and the seal can only be removed with the sword.
+• 2C needs the fans' timing, the pit never traps the player, and the bat's dive bends in the draught.
+• Both crease choices work, no crease is required to finish, and the choice screen appears after Level 1.
+• Backspace resets any room instantly, and Level 2 rooms appear in Room select in both menus.
+• No console errors and no external assets.
+Do not build yet
+The snake, Level 3, the second crease choice, the Parry crease, the Quick fold crease, the bow, the paper plane, or the companion. Keep the code ready for the snake (an enemy base class the bat can extend), but don't build it.
+After building
+Reply with the list of files created and changed, and every number you had to change from this spec with the reason. Also tell me if Level 1 needed any change.

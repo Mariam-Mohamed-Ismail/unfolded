@@ -2,8 +2,10 @@ import * as Phaser from 'phaser'
 import { CONTROLS } from '../ui/controls.ts'
 import { Menu } from '../ui/Menu.ts'
 import { rotAbout } from '../geom.ts'
-import { roomChoices } from '../levels/index.ts'
+import { roomGroups } from '../levels/index.ts'
+import { roomLabel } from '../Records.ts'
 import type { Audio } from '../Audio.ts'
+import type { Records } from '../Records.ts'
 import type { Flow } from '../Flow.ts'
 import type { MenuItem } from '../ui/Menu.ts'
 import type { Point } from '../geom.ts'
@@ -20,6 +22,7 @@ import {
   GAME_WIDTH,
   MENU_TOP,
   MENU_TOP_LIST,
+  MENU_TOP_ROOMS,
   SUBTITLE_FONT_PX,
   TITLE_FONT_PX,
   TITLE_Y,
@@ -85,7 +88,15 @@ export class MainMenuScene extends Phaser.Scene {
     this.subtitle.setVisible(page === 'controls')
     // The controls page is a list of bindings, so its one button moves down
     // out of the way rather than sitting on top of them.
-    this.menu.setTop(page === 'controls' ? MENU_TOP_LIST : MENU_TOP)
+    // Room select is a long page, so it gets shorter rows and starts high.
+    this.menu.setCompact(page === 'rooms')
+    this.menu.setTop(
+      page === 'rooms'
+        ? MENU_TOP_ROOMS
+        : page === 'controls'
+          ? MENU_TOP_LIST
+          : MENU_TOP,
+    )
     this.menu.setItems(this.itemsFor(page))
   }
 
@@ -96,10 +107,23 @@ export class MainMenuScene extends Phaser.Scene {
     if (page === 'rooms') {
       // Straight from the level data, so a new level's rooms appear here
       // without this file changing.
-      const items: MenuItem[] = roomChoices().map((choice) => ({
-        label: () => choice.name,
-        choose: () => flow.go('Game', { level: choice.level, roomId: choice.room }),
-      }))
+      const records = this.registry.get('records') as Records
+      const items: MenuItem[] = []
+      // Grouped straight from the level data: a new level brings its own
+      // heading and rooms without this file changing.
+      for (const group of roomGroups()) {
+        // No choose: a heading, which the cursor and the mouse skip.
+        items.push({ label: () => group.name })
+        for (const choice of group.choices) {
+          items.push({
+            // A function, so a record set this session shows up without
+            // the page being rebuilt.
+            label: () => roomLabel(choice.name, records?.get(choice.room)),
+            choose: () =>
+              flow.go('Game', { level: choice.level, roomId: choice.room }),
+          })
+        }
+      }
       items.push({ label: () => 'Back', choose: () => this.show('main') })
       return items
     }

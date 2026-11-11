@@ -1,3 +1,4 @@
+import { COLOR_BG, COLOR_FOLD, COLOR_FORM, COLOR_WIND } from '../constants.ts'
 import type { LevelData } from './types.ts'
 
 /**
@@ -8,9 +9,19 @@ import type { LevelData } from './types.ts'
  * floor row, so negative is below it. The schema lives in ./types.ts.
  */
 export const level1: LevelData = {
+  name: 'Level 1',
   width: 92,
   height: 18,
   floorRow: 14,
+
+  // Exactly the colours this level has always used, now named rather than
+  // assumed, so Level 2 can differ without changing anything here.
+  palette: {
+    bg: COLOR_BG,
+    fold: COLOR_FOLD,
+    wind: COLOR_WIND,
+    form: COLOR_FORM,
+  },
 
   spawn: { x: 3, h: 0 },
 
