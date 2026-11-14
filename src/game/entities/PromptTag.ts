@@ -1,21 +1,15 @@
 import type * as Phaser from 'phaser'
 import { Entity } from './Entity.ts'
 import { pulse } from '../geom.ts'
+import { drawTag, drawTagText, tagBox } from '../ui/tag.ts'
 import type { EntitySnapshot, EntityWorld, PlayerSense } from './Entity.ts'
 import type { EntityContext } from './Entity.ts'
 import type { EntitySpec } from '../levels/types.ts'
 import {
-  COLOR_INK,
-  COLOR_PAPER,
-  FOLD_OUTLINE,
-  PROMPT_CAP_PX,
   PROMPT_FADE_MS,
   PROMPT_FAILS_FOR_HINT,
-  PROMPT_FOLD_PX,
-  PROMPT_FONT_PX,
   PROMPT_HIGH_RISE,
   PROMPT_LIFT,
-  PROMPT_PAD,
   PROMPT_PULSE_DEPTH,
   PROMPT_RUN_SPEED,
   PULSE_HZ,
@@ -23,8 +17,6 @@ import {
 
 const FADE = PROMPT_FADE_MS / 1000
 /** Monospace, so a character is a reliable fraction of the font size. */
-const CHAR = 0.6
-const CAP_GAP = 5
 
 /** What dismisses a tag. */
 export type PromptAction =
@@ -34,6 +26,7 @@ export type PromptAction =
   | 'dash'
   | 'fold'
   | 'sword'
+  | 'slash'
   | 'target'
 
 const ACTIONS: PromptAction[] = [
@@ -43,6 +36,7 @@ const ACTIONS: PromptAction[] = [
   'dash',
   'fold',
   'sword',
+  'slash',
   'target',
 ]
 
@@ -160,33 +154,7 @@ export class PromptTag extends Entity {
   draw(g: Phaser.GameObjects.Graphics): void {
     const a = this.alpha()
     if (a <= 0.01) return
-
-    const { x, y, w, h } = this.frame()
-    const fold = PROMPT_FOLD_PX
-    // A paper tag with the top-right corner turned down.
-    const body = [
-      { x, y },
-      { x: x + w - fold, y },
-      { x: x + w, y: y + fold },
-      { x: x + w, y: y + h },
-      { x, y: y + h },
-    ]
-    g.fillStyle(COLOR_PAPER, a)
-    g.fillPoints(body, true)
-    g.lineStyle(FOLD_OUTLINE, COLOR_INK, a)
-    g.strokePoints(body, true)
-    // The crease of the turned corner.
-    g.lineBetween(x + w - fold, y, x + w, y + fold)
-
-    // Key caps, as little outlined keys.
-    let at = x + PROMPT_PAD
-    const capH = PROMPT_CAP_PX + 6
-    for (const key of this.keys) {
-      const capW = capWidth(key)
-      g.lineStyle(FOLD_OUTLINE, COLOR_INK, a)
-      g.strokeRect(at, y + (h - capH) / 2, capW, capH)
-      at += capW + CAP_GAP
-    }
+    drawTag(g, this.frame(), this.keys, a)
   }
 
   /**
@@ -217,47 +185,12 @@ export class PromptTag extends Entity {
 
   /** The words and key letters, handed to the scene's label pool. */
   private say(world: EntityWorld): void {
-    const a = this.alpha()
-    const { x, y, w, h } = this.frame()
-    const mid = y + h / 2
-
-    let at = x + PROMPT_PAD
-    for (let i = 0; i < this.keys.length; i++) {
-      const capW = capWidth(this.keys[i])
-      world.fx.label(
-        `${this.id}:k${i}`,
-        at + capW / 2,
-        mid,
-        this.keys[i],
-        PROMPT_CAP_PX,
-        a,
-      )
-      at += capW + CAP_GAP
-    }
-    if (this.words) {
-      world.fx.label(
-        this.id,
-        at + (x + w - PROMPT_PAD - at) / 2,
-        mid,
-        this.words,
-        PROMPT_FONT_PX,
-        a,
-      )
-    }
+    drawTagText(world.fx, this.id, this.frame(), this.words, this.keys, this.alpha())
   }
 
   /** The tag's own rectangle: centred over its zone, floating above it. */
   private frame(): { x: number; y: number; w: number; h: number } {
-    let w = PROMPT_PAD * 2
-    for (const key of this.keys) w += capWidth(key) + CAP_GAP
-    if (this.words) w += this.words.length * PROMPT_FONT_PX * CHAR
-    const h = PROMPT_CAP_PX + 6 + PROMPT_PAD * 2
-    return {
-      x: this.centerX() - w / 2,
-      y: this.y - PROMPT_LIFT - h / 2,
-      w,
-      h,
-    }
+    return tagBox(this.centerX(), this.y - PROMPT_LIFT, this.words, this.keys)
   }
 
   private did(p: PlayerSense): boolean {
@@ -279,6 +212,8 @@ export class PromptTag extends Entity {
         return p.folded
       case 'sword':
         return p.sword
+      case 'slash':
+        return p.slash
       case 'target':
         return false
     }
@@ -294,6 +229,3 @@ export class PromptTag extends Entity {
   }
 }
 
-function capWidth(key: string): number {
-  return key.length * PROMPT_CAP_PX * CHAR + 8
-}

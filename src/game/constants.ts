@@ -356,10 +356,7 @@ export const PICKUP_ZOOM_MS = 120
 // Folded together, the three pieces make one long thin blade.
 export const SWORD_LEN = 34
 export const SWORD_W = 7
-export const SLASH_MS = 220
 export const SLASH_ARC = 2.4
-export const SLASH_SHAKE = 2
-export const SLASH_SHAKE_MS = 70
 
 // The exit door: folded paper that opens as you approach.
 export const DOOR_W = 26
@@ -385,6 +382,22 @@ export const SFX_WHOOSH_TO_HZ = 4000
 export const SFX_WHOOSH_MS = 160
 export const SFX_WHOOSH_Q = 1.5
 export const SFX_WHOOSH_GAIN = 3.9
+
+// --- Level 2, room 2A: the fold wall ---
+// A tall wall that tips over around its base crease when a switch folds it.
+export const FOLDWALL_H = 9
+export const FOLDWALL_MS = 400
+// Laid flat it is drawn as a thin strip. It carries no collision: the floor
+// it lies on is already solid, and a 4px solid would be a 4px wall, since
+// the controller has no step-up.
+export const FOLDWALL_THIN_PX = 4
+export const PARTICLES_FOLDWALL = 10
+export const SHAKE_FOLDWALL = 3
+export const SHAKE_FOLDWALL_MS = 100
+
+// A switch flashes its link lines when pressed, so cause and effect read.
+export const LINK_FLASH_MS = 220
+export const LINK_FLASH_WIDTH = 3
 
 // --- Level 2: a cooler palette ---
 // The level data picks which palette it uses; the values live here, like
@@ -439,10 +452,204 @@ export const PAUSE_TITLE_Y = 92
 export const PAUSE_TOP = 138
 export const PAUSE_TOP_LIST = 300
 
+// --- Level 2: the sword swing ---
+// The spec's three phases. They sum to 370ms, while the same sentence calls
+// the cooldown 350ms - 20ms apart. The phases are kept as written and the
+// swing itself is the gate, so a slash lands every 370ms.
+export const SLASH_WINDUP_MS = 120
+export const SLASH_ACTIVE_MS = 100
+export const SLASH_RECOVER_MS = 150
+export const SLASH_COOLDOWN_MS = 350
+
+// The hit area: a rectangle in front of the player, flipped by facing.
+export const SLASH_BOX_W = 56
+export const SLASH_BOX_H = 36
+
+// Swinging commits you: during the active window you move at 60%.
+export const SLASH_SPEED_SCALE = 0.6
+
+// What a connecting hit feels like.
+export const SLASH_HITSTOP_MS = 60
+export const SLASH_SHAKE = 2
+export const SLASH_SHAKE_MS = 80
+export const PARTICLES_HIT = 5
+export const KNOCKBACK = 160
+export const HIT_FLASH_MS = 90
+
+// Three triangles trailing the sweep, each fading out behind it.
+export const TRAIL_TRIS = 3
+export const TRAIL_FADE_MS = 120
+
+// The training dummy: a temporary target, removable in one line of
+// level2.ts. Three hits to break.
+export const DUMMY_W = 22
+export const DUMMY_H = 44
+export const DUMMY_HEALTH = 3
+export const DUMMY_FRICTION = 900
+
+// Swoosh: the spec's descending sweep. Hit: a short low crunch. Both are
+// noise, so both gains are solved numerically rather than guessed.
+export const SFX_SWOOSH_FROM_HZ = 1500
+export const SFX_SWOOSH_TO_HZ = 400
+export const SFX_SWOOSH_MS = 90
+export const SFX_SWOOSH_Q = 1.4
+// Solved: a guess of 4 ran 4.5dB hot and would have clipped.
+export const SFX_SWOOSH_GAIN = 2.4
+
+export const SFX_HIT_FROM_HZ = 260
+export const SFX_HIT_TO_HZ = 110
+export const SFX_HIT_MS = 70
+export const SFX_HIT_Q = 1.1
+// Solved at the -3dBFS peak ceiling rather than the -26 RMS target: a
+// short low burst has a high crest factor, so the peak binds first and it
+// lands at -30.9 dBFS. Louder would clip.
+export const SFX_HIT_GAIN = 5.11
+
+// --- Level 2, room 2B: the seal ---
+// A strip of teal tape across a passage, floor to a ceiling block, that
+// only the sword cuts.
+export const SEAL_TOP_H = 8
+export const SEAL_TAPE_PX = 2
+export const SEAL_CROSS_GAP = 18
+// How close the prompt and the glow come on, in tiles.
+export const SEAL_REACH = 3
+export const SEAL_SHAKE = 3
+export const SEAL_SHAKE_MS = 100
+export const PARTICLES_SEAL = 8
+
+// Cutting it: the spec's tear, a noise burst with a descending pitch.
+export const SFX_TEAR_FROM_HZ = 2200
+export const SFX_TEAR_TO_HZ = 500
+export const SFX_TEAR_MS = 140
+export const SFX_TEAR_Q = 2
+// Solved, like every noise voice: a guess of 3 ran a little hot.
+export const SFX_TEAR_GAIN = 2.69
+
+// --- Level 2, room 2C: fans on timers ---
+// The last stretch before a fan turns off, so the player can read it: the
+// blades slow, the motes flicker and the hum drops.
+export const FAN_WARN_MS = 400
+export const FAN_WARN_SPIN = 0.3
+export const FAN_FLICKER_HZ = 9
+export const FAN_HUM_WARN = 0.35
+// Turning on: the blades wind back up, and a batch of motes shoots up.
+export const FAN_SPINUP_MS = 250
+export const FAN_BURST = 10
+// The column's outline, dashed while it is off.
+export const FAN_DASH_PX = 8
+export const FAN_DASH_GAP = 6
+
 // Safety clamp, not a feel knob: `delta` spikes to hundreds of ms after a tab
 // switch or a breakpoint, which would teleport the player through the floor in
 // a single frame.
 export const MAX_DT_MS = 1000 / 30
+
+// --- Step L2-6: the fixed simulation step ---
+// The simulation runs at a constant rate regardless of the display, so the
+// same inputs always produce the same result and a recording can be replayed.
+// Rendering still happens once per frame; only the physics is quantised.
+export const STEP_HZ = 60
+export const STEP_MS = 1000 / STEP_HZ
+export const FIXED_DT = 1 / STEP_HZ
+// A recording stops itself after this long, so one left running cannot grow
+// without bound.
+export const RECORD_MAX_S = 60
+// How long the tool's one-line message stays up.
+export const TOOL_NOTE_S = 3
+
+// --- Step L2-7: player health ---
+// From the spec: three hits, and what one costs.
+export const HEALTH_MAX = 3
+export const HURT_KNOCK_X = 240
+export const HURT_KNOCK_Y = 200
+export const HURT_INVULN_MS = 1000
+export const HURT_SHAKE = 3
+export const HURT_SHAKE_MS = 100
+export const HURT_FREEZE_MS = 100
+// Not from the spec. It gives a knockback speed but no duration, and input
+// steers 240px/s away in about 90ms at DECEL, so without a window where the
+// run does not fight it the knockback cannot be felt at all.
+export const HURT_HOLD_MS = 140
+// "A blink", with no rate given. Fast enough to read as flashing, slow
+// enough not to strobe.
+export const HURT_BLINK_HZ = 8
+export const HURT_BLINK_ALPHA = 0.3
+// "A brief red-pink tint at the screen edges": how long, how strong, and how
+// far in from the edge it reaches.
+export const HURT_TINT_MS = 220
+export const HURT_TINT_ALPHA = 0.5
+export const HURT_TINT_PX = 56
+export const HURT_TINT_BANDS = 6
+// The spec names no hex for "red-pink". This sits between its bat pink
+// (#E88A8A) and red.
+export const COLOR_HURT = 0xe8697f
+// "Bursts into triangles" with no count. The other bursts are 2 to 10, and a
+// death should be the largest of them.
+export const DEATH_PARTICLES = 18
+
+// The three pips under the room name. Triangles, like everything else.
+export const HEALTH_PIP_PX = 7
+export const HEALTH_PIP_GAP = 6
+export const HEALTH_PIP_DY = 18
+export const HEALTH_PIP_FADE_S = 0.45
+export const HEALTH_PIP_LINE = 1.5
+
+// --- Step L2-8a: the bat ---
+// From the spec: the hitbox, one health, the range box in tiles, and every
+// state's length in seconds.
+export const BAT_W = 28
+export const BAT_H = 20
+export const BAT_HEALTH = 1
+export const BAT_RANGE_X = 7
+export const BAT_RANGE_Y = 6
+export const BAT_ALERT_S = 0.5
+export const BAT_DIVE_SPEED = 380
+export const BAT_STUN_S = 0.8
+export const BAT_RETURN_S = 0.8
+export const BAT_COOLDOWN_S = 1.5
+// A bat in a draught is pushed up, so the dive bends.
+export const BAT_WIND_ACCEL = 1200
+// Not from the spec: how fast the wind it picked up bleeds off once it is
+// out of the column again, so a bent dive straightens rather than sailing.
+export const BAT_WIND_DAMP = 900
+// Not from the spec: how close a ceiling has to be overhead to count as
+// hiding under it. A little over half the player's standing height, so a
+// slit's gap counts and open ground does not.
+export const BAT_COVER_PX = 40
+// Hanging: a slow, small sway, so it reads as alive but not as moving.
+export const BAT_SWAY_PX = 3
+export const BAT_SWAY_HZ = 0.5
+// Flapping: how fast and how far the wing facets swing.
+export const BAT_FLAP_HZ = 6
+export const BAT_FLAP_DEG = 26
+// How finely the dive curve is sampled. 48 keeps the arc-length error well
+// under a pixel over a dive of a few hundred.
+export const BAT_DIVE_SAMPLES = 48
+// The death burst. Bigger than a sword hit's 5, smaller than a player's 18.
+export const PARTICLES_BAT = 12
+// How far above the bat the "!" telegraph floats. Its size and paper come
+// from the shared prompt tag, so it matches every other tag in the game.
+export const BAT_TAG_DY = 26
+
+// The spec's bat palette: slate body, darker wing facets, pink ears.
+export const COLOR_BAT_BODY = 0x5f7f8c
+export const COLOR_BAT_WING = 0x3f5865
+export const COLOR_BAT_EAR = 0xe88a8a
+
+// The alert sting: two sine notes, as the spec writes them. The gain is
+// solved by tests/calibrate.mjs.
+export const SFX_STING_NOTES = [880, 660]
+export const SFX_STING_NOTE_MS = 110
+export const SFX_STING_STEP_MS = 120
+export const SFX_STING_GAIN = 1
+
+// The thud: one oscillator dropping in pitch, the shape the pickup arpeggio
+// uses. The gain is solved by tests/calibrate.mjs, not chosen.
+export const SFX_THUD_FROM_HZ = 180
+export const SFX_THUD_TO_HZ = 55
+export const SFX_THUD_MS = 190
+// Solved by tests/calibrate.mjs to -26 dBFS: a placeholder 1 was 2.9dB hot.
+export const SFX_THUD_GAIN = 0.72
 
 // --- Step 9: live tuning ---
 // The eight values above are declared with `let` rather than `const` so the

@@ -11,6 +11,12 @@ export type SolidSpec = {
   w: number
   /** Top surface, in tiles above the floor row. Negative is below. */
   h: number
+  /**
+   * Where the underside sits, in tiles above the floor row. Left out, the
+   * solid runs all the way to the bottom of the world, which is what makes
+   * a pit a shorter column. Given, it is a slab you can walk underneath.
+   */
+  bottomH?: number
 }
 
 /**
@@ -37,6 +43,10 @@ export type EntitySpec = {
   /** Ids of the entities this one drives, e.g. a switch and its steps. */
   targets?: string[]
   startsFolded?: boolean
+  /** A switch's direction: 'unfold' (the default) or 'fold'. */
+  mode?: string
+  /** How many sword hits something takes. */
+  health?: number
   /** A prompt's words. Four or fewer, per the tutorial rules. */
   text?: string
   /** The key caps a prompt draws, e.g. ['A', 'D']. */
@@ -49,6 +59,10 @@ export type EntitySpec = {
   floorH?: number
   /** Height of a draught column, in tiles. */
   columnH?: number
+  /** A fan on a timer: when it comes on, for how long, and how often. */
+  onStart?: number
+  onDuration?: number
+  period?: number
   /** Clearance under a slit, in pixels. */
   clearancePx?: number
 }
@@ -90,6 +104,13 @@ export type LevelData = {
   height: number
   floorRow: number
   palette: Palette
+  /**
+   * True for a level that can hurt you. It drives the health pips in the HUD,
+   * and later what the bat is allowed to do — so Level 1, which has no
+   * danger, keeps the HUD it has always had rather than three full pips that
+   * nothing could ever empty.
+   */
+  hazards?: boolean
   spawn: { x: number; h: number }
   solids: SolidSpec[]
   entities: EntitySpec[]

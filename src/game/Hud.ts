@@ -1,5 +1,18 @@
 import * as Phaser from 'phaser'
-import { COLOR_INK, GAME_WIDTH, HUD_FONT_PX, HUD_PAD } from './constants.ts'
+import type { Health } from './Health.ts'
+import {
+  COLOR_HURT,
+  COLOR_INK,
+  GAME_WIDTH,
+  HEALTH_MAX,
+  HEALTH_PIP_DY,
+  HEALTH_PIP_FADE_S,
+  HEALTH_PIP_GAP,
+  HEALTH_PIP_LINE,
+  HEALTH_PIP_PX,
+  HUD_FONT_PX,
+  HUD_PAD,
+} from './constants.ts'
 
 const INK = '#' + COLOR_INK.toString(16).padStart(6, '0')
 
@@ -13,6 +26,8 @@ const INK = '#' + COLOR_INK.toString(16).padStart(6, '0')
 export class Hud {
   private left: Phaser.GameObjects.Text
   private right: Phaser.GameObjects.Text
+  /** The health pips, which are drawn rather than typed. */
+  private gfx: Phaser.GameObjects.Graphics
 
   constructor(scene: Phaser.Scene) {
     const style = {
@@ -26,9 +41,56 @@ export class Hud {
     for (const t of [this.left, this.right]) {
       t.setDepth(950).setScrollFactor(0)
     }
+    this.gfx = scene.add.graphics()
+    this.gfx.setDepth(950).setScrollFactor(0)
   }
 
-  update(room: string, seconds: number, resets: number): void {
+  /**
+   * The three triangles under the room name. Only drawn for a level that can
+   * hurt you: Level 1 has no danger, so its HUD stays the room name and the
+   * timer, exactly as it was.
+   */
+  private drawHealth(health: Health | null): void {
+    this.gfx.clear()
+    if (!health) return
+
+    const r = HEALTH_PIP_PX
+    const y = HUD_PAD + HEALTH_PIP_DY + r
+    for (let i = 0; i < HEALTH_MAX; i++) {
+      const x = HUD_PAD + r + i * (r * 2 + HEALTH_PIP_GAP)
+      const age = health.pipAge(i)
+
+      if (age === null) {
+        // Still held.
+        this.gfx.fillStyle(COLOR_INK, 0.9)
+        pip(this.gfx, x, y, r, true)
+        continue
+      }
+
+      if (age < HEALTH_PIP_FADE_S) {
+        // Just lost: cracks and fades.
+        const t = 1 - age / HEALTH_PIP_FADE_S
+        this.gfx.fillStyle(COLOR_HURT, t)
+        pip(this.gfx, x, y, r, true)
+        this.gfx.lineStyle(HEALTH_PIP_LINE, COLOR_INK, t)
+        // The crack: a line splitting the triangle from apex to base.
+        this.gfx.lineBetween(x, y - r, x + r * 0.35, y + r * 0.7)
+        continue
+      }
+
+      // Gone, but the slot stays so three is still the number you count to.
+      this.gfx.lineStyle(HEALTH_PIP_LINE, COLOR_INK, 0.3)
+      pip(this.gfx, x, y, r, false)
+    }
+  }
+
+  update(
+    room: string,
+    seconds: number,
+    resets: number,
+    health: Health | null = null,
+  ): void {
+    this.drawHealth(health)
     if (this.left.text !== room) this.left.setText(room)
     const whole = Math.floor(seconds)
     const m = Math.floor(whole / 60)
@@ -36,4 +98,21 @@ export class Hud {
     const text = `${m}:${s.toString().padStart(2, '0')}  resets ${resets}`
     if (this.right.text !== text) this.right.setText(text)
   }
+}
+
+/** One pip: a small upward triangle, filled or outlined. */
+function pip(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  r: number,
+  filled: boolean,
+): void {
+  const pts: [number, number, number, number, number, number] = [
+    x, y - r,
+    x + r, y + r * 0.8,
+    x - r, y + r * 0.8,
+  ]
+  if (filled) g.fillTriangle(...pts)
+  else g.strokeTriangle(...pts)
 }

@@ -1,10 +1,14 @@
+import { Bat } from './Bat.ts'
 import { Checkpoint } from './Checkpoint.ts'
 import { Entity } from './Entity.ts'
+import { Dummy } from './Dummy.ts'
 import { ExitDoor } from './ExitDoor.ts'
 import { Fan } from './Fan.ts'
+import { FoldWall } from './FoldWall.ts'
 import { FoldPlatform } from './FoldPlatform.ts'
 import { Pickup } from './Pickup.ts'
 import { PromptTag } from './PromptTag.ts'
+import { Seal } from './Seal.ts'
 import { Slit } from './Slit.ts'
 import { Switch } from './Switch.ts'
 import type { EntityContext } from './Entity.ts'
@@ -80,7 +84,13 @@ export function createRegistry(): EntityRegistry {
     .register('FoldPlatform', (spec, ctx) => new FoldPlatform(spec, ctx))
     .register('PromptTag', (spec, ctx) => new PromptTag(spec, ctx))
     .register('Slit', (spec, ctx) => new Slit(spec, ctx))
+    .register('Seal', (spec, ctx) => new Seal(spec, ctx))
     .register('Fan', (spec, ctx) => new Fan(spec, ctx))
+    .register('FoldWall', (spec, ctx) => new FoldWall(spec, ctx))
+    .register('Bat', (spec, ctx) => new Bat(spec, ctx))
     .register('Pickup', (spec, ctx) => new Pickup(spec, ctx))
     .register('ExitDoor', (spec, ctx) => new ExitDoor(spec, ctx))
+    // Temporary: a target for testing the sword. Removing its line from
+    // level2.ts is enough; this can go with it.
+    .register('Dummy', (spec, ctx) => new Dummy(spec, ctx))
 }

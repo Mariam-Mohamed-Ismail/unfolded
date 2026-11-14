@@ -2,3 +2,38 @@ Phase 1 – Level 2 puzzles
 Step L2-1 – Level 2 skeleton
 Goal: Level 2 exists in the game with its three empty rooms, a new colour palette, and shows up in both room selects.
 Test: you can pick 2A, 2B or 2C from the main menu and the pause menu, spawn on a floor at the right place, and Level 1 still works.
+
+Step L2-2 – Fold wall and room 2A
+Goal: the first Medium puzzle: two switches, one wall, and the second switch undoes the way you came up.
+Test: you can't pass the wall without pressing S2, and you can't reach S2 without S1. After S2 the wall lies flat and the stairs fold back. No way to get stuck. Dotted link lines show what each switch controls.
+
+Step L2-3 – Sword combat basics
+Goal: a sword that feels good to swing, before any enemy exists.
+Test: the swing has a visible wind-up, hit and recovery, you can't swing while flat or dashing, and hitting the dummy gives hit-stop, shake and a shard burst.
+
+
+Step L2-4 – Seal and room 2B (no bat yet)
+Goal: the slit and the seal in sequence, which forces a form change at the right moment.
+Test: you can't get through the slit standing, you can't cut the seal while flat, the seal can't be jumped over, and only the sword removes it.
+
+
+Step L2-5 – Timed fans and room 2C (no bat yet)
+Goal: the wind puzzle with timing, where the player has to read when each fan is on.
+Test: you can only cross by chaining the two fans, the 0.4s warning is easy to see and hear, the overlap window feels fair, and the pit is never a trap.
+
+
+Phase 2 – Make sure every room is solvable 
+Step L2-6 – Recorded solutions
+Goal: proof that each room can be solved, which is what your design doc claims. This is also useful evidence for the follow-up call.
+Test: you can record yourself solving a room, and replaying the file solves it again without you touching anything.
+
+Phase 3 – Health and the bat 
+Read the new brief first. If it changes something that touches combat or the player, update the spec and bring it here before sending these prompts.
+Step L2-7 – Player health
+Goal: a fair, readable damage system.
+Test: you take damage, get knocked back, blink and can't be hit for a second, the three triangles show it, and at zero the room resets cleanly.
+
+Step L2-8 – Enemy base and the bat
+Goal: an enemy that is easy to read and fair to dodge.
+Test: the alert is clear, the dive aims where you were at the end of the alert, dodging works every time, a missed dive leaves it stunned, one sword hit kills it, it ignores you while you are flat under the pillar, and fans bend its path.
+

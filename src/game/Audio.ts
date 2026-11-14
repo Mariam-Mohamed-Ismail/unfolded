@@ -3,6 +3,21 @@ import {
   FAN_HUM_HZ,
   FAN_HUM_Q,
   SFX_ATTACK_MS,
+  SFX_HIT_FROM_HZ,
+  SFX_HIT_GAIN,
+  SFX_HIT_MS,
+  SFX_HIT_Q,
+  SFX_HIT_TO_HZ,
+  SFX_SWOOSH_FROM_HZ,
+  SFX_SWOOSH_GAIN,
+  SFX_SWOOSH_MS,
+  SFX_SWOOSH_Q,
+  SFX_SWOOSH_TO_HZ,
+  SFX_TEAR_FROM_HZ,
+  SFX_TEAR_GAIN,
+  SFX_TEAR_MS,
+  SFX_TEAR_Q,
+  SFX_TEAR_TO_HZ,
   SFX_PICKUP_GAIN,
   SFX_PICKUP_NOTES,
   SFX_PICKUP_NOTE_MS,
@@ -43,6 +58,14 @@ import {
   SFX_STEP_HZ,
   SFX_STEP_MS,
   SFX_STEP_Q,
+  SFX_STING_GAIN,
+  SFX_STING_NOTES,
+  SFX_STING_NOTE_MS,
+  SFX_STING_STEP_MS,
+  SFX_THUD_FROM_HZ,
+  SFX_THUD_GAIN,
+  SFX_THUD_MS,
+  SFX_THUD_TO_HZ,
   SFX_UNFOLD_FROM_HZ,
   SFX_UNFOLD_GAIN,
   SFX_UNFOLD_TO_HZ,
@@ -122,6 +145,39 @@ export class Audio {
     this.crinkle(SFX_UNFOLD_FROM_HZ, SFX_UNFOLD_TO_HZ, SFX_UNFOLD_GAIN)
   }
 
+  /** The swing: the spec's descending sweep. */
+  swoosh(): void {
+    this.noiseHit(
+      SFX_SWOOSH_FROM_HZ,
+      SFX_SWOOSH_TO_HZ,
+      SFX_SWOOSH_MS,
+      SFX_SWOOSH_Q,
+      SFX_SWOOSH_GAIN,
+    )
+  }
+
+  /** Cutting a seal: paper tearing, pitch falling away. */
+  tear(): void {
+    this.noiseHit(
+      SFX_TEAR_FROM_HZ,
+      SFX_TEAR_TO_HZ,
+      SFX_TEAR_MS,
+      SFX_TEAR_Q,
+      SFX_TEAR_GAIN,
+    )
+  }
+
+  /** Connecting: a short low crunch. */
+  hit(): void {
+    this.noiseHit(
+      SFX_HIT_FROM_HZ,
+      SFX_HIT_TO_HZ,
+      SFX_HIT_MS,
+      SFX_HIT_Q,
+      SFX_HIT_GAIN,
+    )
+  }
+
   /** The sword folding: a bright sweep upward. */
   whoosh(): void {
     this.noiseHit(
@@ -161,6 +217,65 @@ export class Audio {
       osc.start(at)
       osc.stop(at + dur)
     }
+  }
+
+  /**
+   * The bat's telegraph: two sine notes, 880 then 660. Short and bare on
+   * purpose — it has to be recognisable through whatever else is playing,
+   * because it is the half-second of warning the player gets.
+   */
+  sting(): void {
+    const ctx = this.wake()
+    if (!ctx || !this.master) return
+    this.played++
+
+    const dur = SFX_STING_NOTE_MS / 1000
+    for (let i = 0; i < SFX_STING_NOTES.length; i++) {
+      const at = ctx.currentTime + (i * SFX_STING_STEP_MS) / 1000
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(SFX_STING_NOTES[i], at)
+
+      const env = ctx.createGain()
+      env.gain.setValueAtTime(SILENT, at)
+      env.gain.linearRampToValueAtTime(SFX_STING_GAIN, at + Math.min(ATTACK, dur / 2))
+      env.gain.exponentialRampToValueAtTime(SILENT, at + dur)
+
+      osc.connect(env)
+      env.connect(this.master)
+      osc.start(at)
+      osc.stop(at + dur)
+    }
+  }
+
+  /**
+   * Taking a hit: a low thud whose pitch drops away. The second voice here
+   * that is a tone rather than filtered noise, because a thud is pitched —
+   * noise through a low bandpass reads as a rumble, not an impact.
+   */
+  thud(): void {
+    const ctx = this.wake()
+    if (!ctx || !this.master) return
+    this.played++
+
+    const at = ctx.currentTime
+    const dur = SFX_THUD_MS / 1000
+
+    const osc = ctx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(SFX_THUD_FROM_HZ, at)
+    // Exponential, so the drop is heard as pitch rather than as a slide.
+    osc.frequency.exponentialRampToValueAtTime(SFX_THUD_TO_HZ, at + dur)
+
+    const env = ctx.createGain()
+    env.gain.setValueAtTime(SILENT, at)
+    env.gain.linearRampToValueAtTime(SFX_THUD_GAIN, at + Math.min(ATTACK, dur / 2))
+    env.gain.exponentialRampToValueAtTime(SILENT, at + dur)
+
+    osc.connect(env)
+    env.connect(this.master)
+    osc.start(at)
+    osc.stop(at + dur)
   }
 
   respawn(): void {

@@ -1,12 +1,11 @@
 import type * as Phaser from 'phaser'
 import { Entity } from './Entity.ts'
 import { dashedRect, mixColor, pulse, rotAbout } from '../geom.ts'
-import type { EntityContext, EntitySnapshot, EntityWorld } from './Entity.ts'
+import type { EntityContext, EntitySnapshot, EntityWorld, FoldMode } from './Entity.ts'
 import type { EntitySpec } from '../levels/types.ts'
 import type { Point } from '../geom.ts'
 import type { Solid } from '../Player.ts'
 import {
-  COLOR_FOLD,
   COLOR_FOLD_LINE,
   COLOR_FOLD_SHADE,
   FOLD_DASH_GAP,
@@ -39,8 +38,11 @@ export class FoldPlatform extends Entity {
   private topY: number
   private baseY: number
   private startsFolded: boolean
+  /** The level's purple, rather than one global one. */
+  private purple: number
 
   private opening = false
+  private closing = false
   private delay = 0
   private clock = 0
   /** 0 flat, 1 fully unfolded. */
@@ -56,6 +58,7 @@ export class FoldPlatform extends Entity {
     this.baseY = this.y
     this.topY = ctx.surfaceY(spec.topH ?? this.th + 1)
     this.startsFolded = spec.startsFolded ?? true
+    this.purple = ctx.palette.fold
     this.solid = {
       x: this.x,
       y: this.topY,
@@ -79,8 +82,24 @@ export class FoldPlatform extends Entity {
     return this.t
   }
 
-  trigger(delay: number): void {
-    if (!this.startsFolded || this.opening || this.solidOn) return
+  trigger(delay: number, mode: FoldMode = 'unfold'): void {
+    if (!this.startsFolded) return
+
+    if (mode === 'fold') {
+      if (this.t <= 0) return
+      // Collision goes the moment folding starts, not when the animation
+      // ends: stand on a step while it folds and you fall straight away,
+      // which is what stops this being a way to get stuck.
+      this.setSolid(false)
+      this.closing = true
+      this.opening = false
+      this.delay = delay
+      this.clock = 0
+      return
+    }
+
+    if (this.opening || this.solidOn) return
+    this.closing = false
     this.opening = true
     this.delay = delay
     this.clock = 0
@@ -88,26 +107,36 @@ export class FoldPlatform extends Entity {
 
   update(dt: number, world: EntityWorld): void {
     this.pulseClock += dt
-    if (!this.opening) return
+    if (!this.opening && !this.closing) return
 
     // One clock counting up rather than two counting down: the stagger and
     // the rotation then cannot drift apart or leave float residue behind.
     this.clock += dt
     const p = (this.clock - this.delay) / OPEN
     if (p <= 0) return
+
+    if (this.closing) {
+      this.t = Math.max(0, 1 - p)
+      if (this.t > 0) return
+      this.closing = false
+      world.fx.sound('fold')
+      return
+    }
+
     this.t = Math.min(1, p)
     if (this.t < 1) return
 
     this.opening = false
     this.setSolid(true)
     // It lands rather than appears: paper, dust and a knock.
-    world.fx.dust(this.x + this.w / 2, this.topY, PARTICLES_FOLD_OPEN, COLOR_FOLD)
+    world.fx.dust(this.x + this.w / 2, this.topY, PARTICLES_FOLD_OPEN, this.purple)
     world.fx.shake(SHAKE_FOLD, SHAKE_FOLD_MS)
     world.fx.sound('fold')
   }
 
   reset(): void {
     this.opening = false
+    this.closing = false
     this.clock = 0
     this.delay = 0
     this.t = this.startsFolded ? 0 : 1
@@ -119,7 +148,7 @@ export class FoldPlatform extends Entity {
       // A ghost of where the step will be, so the geometry reads before the
       // puzzle is solved: the stairs are visibly missing, not absent.
       const alpha = FOLD_GHOST_ALPHA * pulse(this.pulseClock, PULSE_HZ, PULSE_DEPTH)
-      g.lineStyle(FOLD_OUTLINE, COLOR_FOLD, alpha)
+      g.lineStyle(FOLD_OUTLINE, this.purple, alpha)
       dashedRect(
         g,
         this.x,
@@ -145,7 +174,7 @@ export class FoldPlatform extends Entity {
     ].map((p) => rotAbout(p as Point, angle, crease))
     const points = quad.map(([x, y]) => ({ x, y }))
 
-    g.fillStyle(mixColor(COLOR_FOLD_SHADE, COLOR_FOLD, this.t), 1)
+    g.fillStyle(mixColor(COLOR_FOLD_SHADE, this.purple, this.t), 1)
     g.fillPoints(points, true)
     g.lineStyle(FOLD_OUTLINE, COLOR_FOLD_LINE, 1)
     g.strokePoints(points, true)

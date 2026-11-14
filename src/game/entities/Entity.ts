@@ -1,5 +1,5 @@
 import type * as Phaser from 'phaser'
-import type { EntitySpec } from '../levels/types.ts'
+import type { EntitySpec, Palette } from '../levels/types.ts'
 import type { Solid, Updraft } from '../Player.ts'
 import { TILE } from '../constants.ts'
 
@@ -15,7 +15,12 @@ export type EntityContext = {
   surfaceY: (h: number) => number
   addSolid: (s: Solid) => void
   removeSolid: (s: Solid) => void
+  /** The level's own colours, so two levels can draw the same thing twice. */
+  palette: Palette
 }
+
+/** Which way a fold goes. */
+export type FoldMode = 'unfold' | 'fold'
 
 /** An axis-aligned box in pixels. */
 export type Box = { left: number; right: number; top: number; bottom: number }
@@ -25,7 +30,15 @@ export type Box = { left: number; right: number; top: number; bottom: number }
  * component never imports Particles, Camera or Audio — or Phaser.
  */
 /** The one-shot voices an entity can ask for by name. */
-export type SoundName = 'fold' | 'pickup' | 'whoosh'
+export type SoundName =
+  | 'fold'
+  | 'pickup'
+  | 'whoosh'
+  | 'swoosh'
+  | 'hit'
+  | 'tear'
+  /** The bat's two-note alert. */
+  | 'sting'
 
 export type Fx = {
   dust: (x: number, y: number, count: number, color?: number) => void
@@ -65,7 +78,10 @@ export type PlayerSense = {
   speed: number
   jumped: boolean
   dashed: boolean
+  /** The moment of folding, for a tag whose lesson is "press down". */
   folded: boolean
+  /** Folded flat right now, which is what hiding under a pillar looks like. */
+  flat: boolean
   /** The R edge: toggle the sword. */
   sword: boolean
   /** The J or left-click edge: slash. */
@@ -80,7 +96,21 @@ export type Buttons = { sword: boolean; slash: boolean }
 /** What an entity can see each frame. One object, reused by Level. */
 export type EntityWorld = {
   player: PlayerSense
+  /** Is the blade drawn? A seal's prompt depends on it. */
+  swordOut: boolean
   fx: Fx
+  /**
+   * The world's collision list. Only something that moves needs it — the bat
+   * is the first entity that does, and it is how a dive knows it has hit the
+   * floor.
+   */
+  solids: readonly Solid[]
+  /**
+   * Is anything moving the air in `box`? The same question the player asks
+   * the level, asked by an entity about itself, so a bat's dive bends in a
+   * fan column without the fan and the bat knowing about each other.
+   */
+  liftAt: (box: Box) => Updraft | null
 }
 
 export type EntityStateValue = number | boolean | string
@@ -182,8 +212,11 @@ export class Entity {
    * Do your thing, `delay` seconds from now. This is what the id links are
    * for: a switch calls trigger() on its targets and never learns what they
    * are. Anything that does not respond ignores it.
+   *
+   * `mode` is the direction: a switch in fold mode folds its targets back.
+   * It defaults to unfold, so every older call site is unchanged.
    */
-  trigger(_delay: number): void {}
+  trigger(_delay: number, _mode: FoldMode = 'unfold'): void {}
 
   /**
    * Has this thing been used yet? The read-side twin of trigger(): it lets a
@@ -194,10 +227,47 @@ export class Entity {
   }
 
   /**
+   * The box the sword can cut, or null for anything it cannot. This and
+   * hurt() are the whole Hittable contract: seals and enemies implement
+   * them and the sword never learns what it is cutting.
+   */
+  hurtBox(): Box | null {
+    return null
+  }
+
+  /**
+   * Take one hit, coming from `dir` (-1 or 1). Returns true if it survived,
+   * which is what earns knockback; something that died takes none.
+   */
+  hurt(_dir: number): boolean {
+    return false
+  }
+
+  /** Shoved sideways at `vx` px/s, for something that survived a hit. */
+  knock(_vx: number): void {}
+
+  /** Is the blade drawn? Only the sword pieces answer this. */
+  swordOut(): boolean {
+    return false
+  }
+
+  /**
    * Is this thing moving the air where `box` is? The player asks the level
    * for this each frame, so a draught never has to reach into the player.
    */
   draughtAt(_box: Box): Updraft | null {
+    return null
+  }
+
+  /**
+   * Is this thing hurting the player, who is at `box`? Returns the centre x
+   * of whatever is doing it, which is all the knockback needs to know, or
+   * null for everything harmless.
+   *
+   * The twin of draughtAt, and the same rule: the player asks the level, and
+   * nothing ever reaches into the player.
+   */
+  dangerAt(_box: Box): number | null {
     return null
   }
 

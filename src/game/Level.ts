@@ -4,7 +4,7 @@ import { Room } from './Room.ts'
 import { createRegistry } from './entities/EntityRegistry.ts'
 import { COLOR_SOLID, PLAYER_H, TILE } from './constants.ts'
 import type { EntityRegistry } from './entities/EntityRegistry.ts'
-import type { Buttons, EntityWorld, Fx } from './entities/Entity.ts'
+import type { Box, Buttons, Entity, EntityWorld, Fx } from './entities/Entity.ts'
 import type { LevelData } from './levels/types.ts'
 import type { Solid, Updraft } from './Player.ts'
 
@@ -20,6 +20,7 @@ export type PlayerLike = {
   justJumped: boolean
   justDashed: boolean
   justFolded: boolean
+  isFlat: () => boolean
   halfW: () => number
   halfH: () => number
 }
@@ -60,12 +61,18 @@ export class Level {
       jumped: false,
       dashed: false,
       folded: false,
+      flat: false,
       sword: false,
       slash: false,
       failedAt: null,
     },
+    swordOut: false,
     fx: NO_FX,
+    solids: [],
+    liftAt: () => null,
   }
+  /** liftAt, bound once, so handing it to entities allocates nothing. */
+  private boundLiftAt = (box: Box): Updraft | null => this.liftAt(box)
   /** Set by failedAt(), consumed by the next update. */
   private failed: number | null = null
   /** Set by pressed(), consumed by the next update. */
@@ -78,11 +85,15 @@ export class Level {
 
     for (const s of data.solids) {
       const top = this.surfaceY(s.h)
+      // Without bottomH a solid runs to the bottom of the world, so a pit
+      // is simply a shorter column. With it, it is a slab with space under.
+      const bottom =
+        s.bottomH === undefined ? this.heightPx : this.surfaceY(s.bottomH)
       this.solids.push({
         x: s.x * TILE,
         y: top,
         w: s.w * TILE,
-        h: this.heightPx - top,
+        h: bottom - top,
       })
     }
 
@@ -92,6 +103,7 @@ export class Level {
     this.entities.build(data.entities, {
       tileX: (x) => x * TILE,
       surfaceY: (h) => this.surfaceY(h),
+      palette: data.palette,
       // A platform that unfolds puts itself into the collision list the
       // player is already colliding against, and takes itself back out on a
       // reset. The list stays owned here.
@@ -177,6 +189,7 @@ export class Level {
     sense.jumped = player.justJumped
     sense.dashed = player.justDashed
     sense.folded = player.justFolded
+    sense.flat = player.isFlat()
     sense.sword = this.buttons.sword
     sense.slash = this.buttons.slash
     // One frame only, like the player's own event flags.
@@ -184,8 +197,53 @@ export class Level {
     this.failed = null
     this.buttons = { sword: false, slash: false }
     this.world.fx = fx
+    this.world.swordOut = this.swordOut()
+    // Wired once rather than rebuilt: anything that moves needs the collision
+    // list and the air, and both are the level's to answer.
+    this.world.solids = this.solids
+    this.world.liftAt = this.boundLiftAt
 
     this.current?.update(dt, this.world)
+  }
+
+  /**
+   * Is anything moving the air in `box`? Current room only. Bound once in the
+   * constructor so handing it to an entity costs nothing per frame.
+   */
+  liftAt(box: Box): Updraft | null {
+    const room = this.current
+    if (!room) return null
+    for (const entity of room.entities) {
+      const lift = entity.draughtAt(box)
+      if (lift) return lift
+    }
+    return null
+  }
+
+  /**
+   * Is anything in this room hurting the player, who fills `box`? Returns the
+   * attacker's centre x for the knockback to point away from.
+   */
+  dangerAt(box: Box): number | null {
+    const room = this.current
+    if (!room) return null
+    for (const entity of room.entities) {
+      const from = entity.dangerAt(box)
+      if (from !== null) return from
+    }
+    return null
+  }
+
+  /** The player's own box, which three different questions want. */
+  boxOf(player: PlayerLike): Box {
+    const hw = player.halfW()
+    const hh = player.halfH()
+    return {
+      left: player.x - hw,
+      right: player.x + hw,
+      top: player.y - hh,
+      bottom: player.y + hh,
+    }
   }
 
   /**
@@ -193,21 +251,22 @@ export class Level {
    * moves, so a draught takes effect on the same frame you step into it.
    */
   updraftAt(player: PlayerLike): Updraft | null {
+    return this.liftAt(this.boxOf(player))
+  }
+
+  /**
+   * Everything in the room the sword could cut. Current room only: there is
+   * no reaching into the next one.
+   */
+  hurtTargets(): Entity[] {
     const room = this.current
-    if (!room) return null
-    const hw = player.halfW()
-    const hh = player.halfH()
-    const box = {
-      left: player.x - hw,
-      right: player.x + hw,
-      top: player.y - hh,
-      bottom: player.y + hh,
-    }
-    for (const entity of room.entities) {
-      const lift = entity.draughtAt(box)
-      if (lift) return lift
-    }
-    return null
+    if (!room) return []
+    return room.entities.filter((e) => e.hurtBox() !== null)
+  }
+
+  /** Is the player holding the blade? */
+  swordOut(): boolean {
+    return this.entities.all.some((e) => e.swordOut())
   }
 
   /**

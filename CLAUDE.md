@@ -28,7 +28,7 @@ No test runner, linter, or formatter is configured — `npm run build` is the on
 - **Import it as `import * as Phaser from 'phaser'`.** The ESM build Vite resolves (`dist/phaser.esm.js`) has named exports and *no default export*, so `import Phaser from 'phaser'` compiles but is `undefined` at runtime.
 - **No physics system is enabled.** The game config has no `physics` key on purpose. The player controller is hand-written — it integrates its own velocity and resolves its own AABB collisions — so coyote time, jump buffering and variable jump height stay frame-exact. Do not reach for Arcade.
 
-There is no `vite.config.ts`, so Vite defaults apply: project root is the repo root, `public/` is served at `/`, and `index.html` is the single entry point.
+`vite.config.ts` holds Vite's defaults plus one thing: a **dev-only** plugin serving `/__solutions/<room>` so the F2 solution recorder can write `src/game/solutions/<room>.json` (a browser cannot write into `src/`). Everything else is still the default — project root is the repo root, `public/` is served at `/`, and `index.html` is the single entry point. Those JSON files are *fetched*, never imported, so they stay out of the module graph and recording one cannot trigger an HMR reload.
 
 ## Tuning values are live
 

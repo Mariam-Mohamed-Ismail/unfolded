@@ -21,6 +21,10 @@ import {
   DECEL,
   FALL_GRAVITY_MULT,
   GRAVITY,
+  HURT_FREEZE_MS,
+  HURT_HOLD_MS,
+  HURT_KNOCK_X,
+  HURT_KNOCK_Y,
   JUMP_BUFFER_MS,
   JUMP_CUT,
   IDLE_SPEED,
@@ -114,6 +118,12 @@ export class Player {
   private dashing = 0
   private dashWait = 0
   private airDashUsed = false
+  /**
+   * While this runs, the run does not fight the knockback. Same idea as
+   * dashTail: speed is held and input ignored, but gravity and collision
+   * carry on as normal.
+   */
+  private knockHold = 0
 
   // Set during update, read by the scene afterwards, cleared next frame.
   // Keeps effects out of the controller without it knowing they exist.
@@ -124,6 +134,8 @@ export class Player {
   justStood = false
   /** Raised each time a running foot comes down. */
   justFootstep = false
+  /** Raised on the frame a hit lands, for the scene to react to. */
+  justHurt = false
   /** Downward speed at the moment of the last landing. */
   landSpeed = 0
   /** How far the last landing fell, from the highest point reached. */
@@ -176,8 +188,49 @@ export class Player {
    * True during the dash hitstop. The scene holds its own effects still for
    * the same window, so what you see is the whole game stopping.
    */
+  /**
+   * Hold everything still for a moment. The dash's hitstop already works
+   * this way, so a sword hit borrows the same mechanism rather than adding
+   * a second kind of pause.
+   */
+  freezeFor(seconds: number): void {
+    this.freeze = Math.max(this.freeze, seconds)
+  }
+
+  /**
+   * Took a hit. `awayX` is the direction to be thrown in: +1 to the right,
+   * so the caller passes the sign of (player - attacker).
+   *
+   * The velocity, the hitstop and the hold are all set here; the sound, the
+   * shake, the tint and the blink are the scene's, raised through justHurt.
+   * Nothing here knows how much health is left — Health counts, this throws.
+   */
+  hurt(awayX: number): void {
+    const away = awayX >= 0 ? 1 : -1
+    this.vx = HURT_KNOCK_X * away
+    this.vy = -HURT_KNOCK_Y
+    // Standing up out of a fold would otherwise swallow the knockback.
+    this.flat = false
+    this.grounded = false
+    this.dashing = 0
+    this.dashTail = 0
+    this.knockHold = HURT_HOLD_MS / 1000
+    this.freezeFor(HURT_FREEZE_MS / 1000)
+    this.justHurt = true
+  }
+
+  /** Mid-dash, including the hitstop at its start. */
+  isDashing(): boolean {
+    return this.dashing > 0 || this.freeze > 0
+  }
+
   frozen(): boolean {
     return this.freeze > 0
+  }
+
+  /** Folded flat right now. The state, not the moment of folding. */
+  isFlat(): boolean {
+    return this.flat
   }
 
   /** Where the feet are. The view is drawn and scaled from this point. */
@@ -203,6 +256,7 @@ export class Player {
     this.dashWait = 0
     this.dashTail = 0
     this.dashDir = 1
+    this.knockHold = 0
     this.landHold = 0
     this.apexY = y
     this.fallDrop = 0
@@ -222,6 +276,7 @@ export class Player {
     this.justFolded = false
     this.justStood = false
     this.justFootstep = false
+    this.justHurt = false
   }
 
   /** `dt` is in seconds. */
@@ -230,6 +285,7 @@ export class Player {
     input: Input,
     solids: Solid[],
     lift: Updraft | null = null,
+    speedScale = 1,
   ): void {
     this.clearEvents()
     this.dir = input.dir
@@ -275,8 +331,11 @@ export class Player {
     if (this.dashTail > 0) {
       this.dashTail = tick(this.dashTail, dt)
       this.vx = DASH_SPEED * DASH_TAIL_MULT * this.dashDir
+    } else if (this.knockHold > 0) {
+      // Knocked back: hold the throw rather than let the run cancel it.
+      this.knockHold = tick(this.knockHold, dt)
     } else {
-      this.runX(dt, input.dir)
+      this.runX(dt, input.dir, speedScale)
     }
     this.jump(dt)
     this.gravity(dt, lift)
@@ -405,7 +464,11 @@ export class Player {
 
   // --- run and jump ---
 
-  private runX(dt: number, dir: number): void {
+  /**
+   * `scale` caps the top speed: swinging the sword commits you to 60% for
+   * the active frame. It defaults to 1, so nothing else feels different.
+   */
+  private runX(dt: number, dir: number, scale = 1): void {
     if (this.flat) {
       this.slideX(dt, dir)
       return
@@ -426,7 +489,8 @@ export class Player {
     // moving the way we are pressing, accel takes over. That is the skid.
     const turning = this.vx !== 0 && Math.sign(this.vx) !== dir
     const rate = turning ? decel : accel
-    this.vx = Phaser.Math.Clamp(this.vx + dir * rate * dt, -MAX_SPEED, MAX_SPEED)
+    const cap = MAX_SPEED * scale
+    this.vx = Phaser.Math.Clamp(this.vx + dir * rate * dt, -cap, cap)
   }
 
   /**

@@ -20,6 +20,9 @@ export class Input {
   private muteKeys: Phaser.Input.Keyboard.Key[]
   private debugKeys: Phaser.Input.Keyboard.Key[]
   private resetKeys: Phaser.Input.Keyboard.Key[]
+  private recordKeys: Phaser.Input.Keyboard.Key[]
+  private replayKeys: Phaser.Input.Keyboard.Key[]
+  private hurtKeys: Phaser.Input.Keyboard.Key[]
   private swordKeys: Phaser.Input.Keyboard.Key[]
   private slashKeys: Phaser.Input.Keyboard.Key[]
   private pauseKeys: Phaser.Input.Keyboard.Key[]
@@ -64,9 +67,28 @@ export class Input {
   /** True only on the frame Esc goes down. */
   pausePressed = false
 
+  /** True only on the frame F2 goes down: records a solution. */
+  recordPressed = false
+
+  /** True only on the frame F3 goes down: replays one. */
+  replayPressed = false
+
+  /**
+   * True only on the frame F4 goes down: damages the player, for testing
+   * health before there is anything in the game that can.
+   *
+   * To remove F4 later: delete this field, `hurtHeld`, the `hurtKeys` line in
+   * the constructor, its three lines in update(), and the one `if` in
+   * GameScene.step().
+   */
+  hurtPressed = false
+
   private swordHeld = false
   private slashHeld = false
   private pauseHeld = false
+  private recordHeld = false
+  private replayHeld = false
+  private hurtHeld = false
 
   /**
    * Debug panel edges: move the cursor, nudge by one step, nudge by ten.
@@ -98,6 +120,10 @@ export class Input {
     this.muteKeys = [kb.addKey('M')]
     this.debugKeys = [kb.addKey('F1')]
     this.resetKeys = [kb.addKey('BACKSPACE')]
+    // Dev tools, next to F1 on purpose.
+    this.recordKeys = [kb.addKey('F2')]
+    this.replayKeys = [kb.addKey('F3')]
+    this.hurtKeys = [kb.addKey('F4')]
     this.swordKeys = [kb.addKey('R')]
     this.slashKeys = [kb.addKey('J')]
     this.pauseKeys = [kb.addKey('ESC')]
@@ -155,6 +181,18 @@ export class Input {
     const pause = anyDown(this.pauseKeys)
     this.pausePressed = pause && !this.pauseHeld
     this.pauseHeld = pause
+
+    const record = anyDown(this.recordKeys)
+    this.recordPressed = record && !this.recordHeld
+    this.recordHeld = record
+
+    const replay = anyDown(this.replayKeys)
+    this.replayPressed = replay && !this.replayHeld
+    this.replayHeld = replay
+
+    const hurt = anyDown(this.hurtKeys)
+    this.hurtPressed = hurt && !this.hurtHeld
+    this.hurtHeld = hurt
 
     const edges: boolean[] = []
     for (let i = 0; i < this.panelKeys.length; i++) {

@@ -1,16 +1,18 @@
 import type * as Phaser from 'phaser'
 import { Entity } from './Entity.ts'
 import { dashedLine, pulse } from '../geom.ts'
-import type { Box, EntityContext, EntitySnapshot, EntityWorld } from './Entity.ts'
+import type { Box, EntityContext, EntitySnapshot, EntityWorld, FoldMode } from './Entity.ts'
 import type { EntitySpec } from '../levels/types.ts'
 import {
-  COLOR_FOLD,
   COLOR_FOLD_LINE,
+  COLOR_PAPER,
   FOLD_OUTLINE,
   FOLD_STAGGER_MS,
   LINK_DOT_GAP,
   LINK_DOT_PX,
   LINK_FADE_MS,
+  LINK_FLASH_MS,
+  LINK_FLASH_WIDTH,
   LINK_HOLD_MS,
   PULSE_DEPTH,
   PULSE_HZ,
@@ -28,6 +30,7 @@ const RIPPLE = RIPPLE_MS / 1000
 const HOLD = LINK_HOLD_MS / 1000
 const FADE = LINK_FADE_MS / 1000
 const STAGGER = FOLD_STAGGER_MS / 1000
+const FLASH = LINK_FLASH_MS / 1000
 
 /**
  * A pressure plate that latches. Step on it once and it stays down; only a
@@ -40,6 +43,9 @@ const STAGGER = FOLD_STAGGER_MS / 1000
 export class Switch extends Entity {
   private plateX: number
   private plateY: number
+  private purple: number
+  /** 'unfold' opens its targets; 'fold' folds them back. */
+  private mode: FoldMode
   private pressed = false
   /** Seconds since the press, which drives the ripple and the link line. */
   private clock = 0
@@ -50,6 +56,8 @@ export class Switch extends Entity {
     // Centred in its tile, sitting on the surface it was placed on.
     this.plateX = this.x + (TILE - SWITCH_W) / 2
     this.plateY = this.y - SWITCH_H
+    this.purple = ctx.palette.fold
+    this.mode = spec.mode === 'fold' ? 'fold' : 'unfold'
   }
 
   isPressed(): boolean {
@@ -92,7 +100,7 @@ export class Switch extends Entity {
       { x: this.plateX + SWITCH_W, y: bottom },
       { x: this.plateX, y: bottom },
     ]
-    g.fillStyle(COLOR_FOLD, alpha)
+    g.fillStyle(this.purple, alpha)
     g.fillPoints(points, true)
     g.lineStyle(FOLD_OUTLINE, COLOR_FOLD_LINE, 1)
     g.strokePoints(points, true)
@@ -100,20 +108,23 @@ export class Switch extends Entity {
     // The ripple: one expanding ring, spreading out of the plate.
     if (this.pressed && this.clock < RIPPLE) {
       const e = this.clock / RIPPLE
-      g.lineStyle(RIPPLE_WIDTH, COLOR_FOLD, 1 - e)
+      g.lineStyle(RIPPLE_WIDTH, this.purple, 1 - e)
       g.strokeCircle(this.centerX(), bottom, RIPPLE_RADIUS * e)
     }
   }
 
   serialize(): EntitySnapshot {
-    return { ...super.serialize(), state: { pressed: this.pressed } }
+    return { ...super.serialize(), state: { pressed: this.pressed, mode: this.mode } }
   }
 
   private press(): void {
     this.pressed = true
     this.clock = 0
-    // One after another, in the order the data listed them.
-    this.targets.forEach((t, i) => t.trigger(i * STAGGER))
+    // Unfolding runs down the list; folding runs back up it, so the steps
+    // fold away in the reverse of the order they appeared in.
+    const order =
+      this.mode === 'fold' ? [...this.targets].reverse() : [...this.targets]
+    order.forEach((t, i) => t.trigger(i * STAGGER, this.mode))
   }
 
   /**
@@ -125,7 +136,13 @@ export class Switch extends Entity {
     const age = this.clock - HOLD
     if (age > FADE) return
     const alpha = age <= 0 ? 1 : 1 - age / FADE
-    g.lineStyle(FOLD_OUTLINE, COLOR_FOLD, alpha)
+    // A flash on the press, so which switch moved what is unmissable.
+    const flashing = this.clock < FLASH
+    g.lineStyle(
+      flashing ? LINK_FLASH_WIDTH : FOLD_OUTLINE,
+      flashing ? COLOR_PAPER : this.purple,
+      alpha,
+    )
     for (const t of this.targets) {
       dashedLine(
         g,

@@ -4,8 +4,13 @@ import {
   CAM_DEADZONE_Y,
   CAM_LERP,
   CAM_LOOK_AHEAD,
+  COLOR_HURT,
   GAME_HEIGHT,
   GAME_WIDTH,
+  HURT_TINT_ALPHA,
+  HURT_TINT_BANDS,
+  HURT_TINT_MS,
+  HURT_TINT_PX,
   PICKUP_ZOOM,
   PICKUP_ZOOM_MS,
 } from './constants.ts'
@@ -30,6 +35,9 @@ export class Camera {
   private anchor = { x: 0, y: 0 }
   /** Seconds left of the zoom pulse. */
   private zoomT = 0
+  /** Seconds left of the damage tint, and the Graphics it is drawn into. */
+  private tintT = 0
+  private tint: Phaser.GameObjects.Graphics
 
   constructor(scene: Phaser.Scene, levelWidth: number, levelHeight: number) {
     this.cam = scene.cameras.main
@@ -43,6 +51,11 @@ export class Camera {
     // Vertical slack only: the view should not chase a jump, but it should
     // keep up horizontally.
     this.cam.setDeadzone(CAM_DEADZONE_X, CAM_DEADZONE_Y)
+
+    // Over the world and the HUD, pinned to the screen: this is the frame of
+    // the view, not something in the level.
+    this.tint = scene.add.graphics()
+    this.tint.setDepth(960).setScrollFactor(0)
   }
 
   /** Start on the player, so the view does not ease in from the world corner. */
@@ -75,6 +88,11 @@ export class Camera {
       const done = 1 - this.zoomT / total
       this.cam.setZoom(1 + PICKUP_ZOOM * Math.sin(done * Math.PI))
     }
+
+    if (this.tintT > 0) {
+      this.tintT = Math.max(0, this.tintT - dt)
+      this.drawTint(this.tintT / (HURT_TINT_MS / 1000))
+    }
   }
 
   /** Where the view is currently centred. */
@@ -99,5 +117,36 @@ export class Camera {
   shake(pixels: number, ms: number): void {
     if (pixels <= 0) return
     this.cam.shake(ms, pixels / GAME_WIDTH)
+  }
+
+  /**
+   * The damage vignette: a red-pink tint that creeps in from the edges and
+   * fades. Here rather than in the Hud because it is of the screen, like the
+   * shake and the zoom, not of the readout.
+   */
+  hurtTint(): void {
+    this.tintT = HURT_TINT_MS / 1000
+  }
+
+  /** `strength` runs 1 to 0 as the tint fades. */
+  private drawTint(strength: number): void {
+    this.tint.clear()
+    if (strength <= 0) return
+
+    // Bands from each edge inward, each fainter than the last, which reads
+    // as a gradient without needing one.
+    const bands = HURT_TINT_BANDS
+    for (let i = 0; i < bands; i++) {
+      const t = 1 - i / bands
+      const inset = (HURT_TINT_PX * i) / bands
+      const step = HURT_TINT_PX / bands
+      this.tint.fillStyle(COLOR_HURT, HURT_TINT_ALPHA * strength * t * t)
+      // Top, bottom, left, right — overlapping at the corners on purpose, so
+      // the corners are the strongest part.
+      this.tint.fillRect(inset, inset, GAME_WIDTH - inset * 2, step)
+      this.tint.fillRect(inset, GAME_HEIGHT - inset - step, GAME_WIDTH - inset * 2, step)
+      this.tint.fillRect(inset, inset, step, GAME_HEIGHT - inset * 2)
+      this.tint.fillRect(GAME_WIDTH - inset - step, inset, step, GAME_HEIGHT - inset * 2)
+    }
   }
 }
