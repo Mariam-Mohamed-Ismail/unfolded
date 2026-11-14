@@ -110,6 +110,10 @@ export const SHAKE_LAND_TILES = 4
 // Phaser applies its follow lerp once per frame rather than per second, so
 // the look-ahead uses the same factor to move with it rather than against.
 export const CAM_LERP = 0.12
+// The vertical follow, for a level tall enough to scroll. Gentler than the
+// horizontal one on purpose: at 0.12 the view chases every jump. Taken from
+// the level data, so a level that does not ask for it keeps CAM_LERP.
+export const CAM_LERP_Y = 0.05
 export const CAM_LOOK_AHEAD = 80
 export const CAM_DEADZONE_Y = 60
 // A sliver of horizontal deadzone: zero would be ignored, and anything
@@ -405,6 +409,50 @@ export const LINK_FLASH_WIDTH = 3
 export const COLOR_L2_BG = 0xd4dee8
 // Deeper than Level 1's purple so it still reads on the cooler background.
 export const COLOR_L2_FOLD = 0x6b5fc4
+
+// --- Step L3-1: Level 3's warm dusk ---
+// The first level whose platforms are the spec's cream rather than the mint
+// COLOR_SOLID. It carries them in its own palette, so Levels 1 and 2 are
+// untouched.
+export const COLOR_L3_BG = 0xebd5cf
+export const COLOR_L3_SOLID = 0xf7f2e8
+export const COLOR_L3_LINE = 0x2b2a33
+// How thick that outline is drawn.
+export const SOLID_OUTLINE = 2
+
+// --- Step L3-2: the timed switch and the fold sheet ---
+// How long a timed plate stays down, when its data does not say.
+export const SWITCH_TIMED_S = 7
+// The clock ring around the plate, which empties as the time runs out.
+export const SWITCH_RING_R = 15
+export const SWITCH_RING_WIDTH = 3
+// --- Step L3-3: the fold bridge and seal links ---
+// Five panels of two tiles, opening left to right a tenth of a second
+// apart. Each panel's own swing reuses the fold family's FOLD_OPEN_MS, which
+// the spec leaves unstated; only the stagger is new.
+export const BRIDGE_SEGMENTS = 5
+export const BRIDGE_STAGGER_MS = 100
+// The deck is a slab, not a column: it bridges the gap rather than filling
+// it. Its top sits flush with the floor either side.
+export const BRIDGE_DECK_PX = 8
+// The thread from a seal to whatever it holds closed, and how long its two
+// ends whip apart once it is cut.
+export const THREAD_PX = 1.5
+export const THREAD_SNAP_MS = 220
+export const THREAD_SNAP_PX = 14
+
+// The twang: a plucked thread, so a short tone with a fast decay. Its gain
+// is solved by tests/calibrate.mjs.
+export const SFX_TWANG_FROM_HZ = 440
+export const SFX_TWANG_TO_HZ = 300
+export const SFX_TWANG_MS = 170
+// Solved by tests/calibrate.mjs to -26 dBFS: a placeholder 1 was 3dB hot.
+export const SFX_TWANG_GAIN = 0.71
+
+// The sheet: thin, and solid while it is closed.
+export const SHEET_PX = 4
+// How long it takes to fold aside, and to come back.
+export const SHEET_FOLD_MS = 400
 
 // --- Step 16: scenes, menus and the HUD ---
 export const FADE_MS = 220

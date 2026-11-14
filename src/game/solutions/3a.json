@@ -1,0 +1,28 @@
+{
+  "level": 2,
+  "room": "3a",
+  "hz": 60,
+  "steps": 383,
+  "tuning": {
+    "MAX_SPEED": 260,
+    "GRAVITY": 1800,
+    "JUMP_VELOCITY": -560,
+    "DASH_SPEED": 560,
+    "DASH_TIME": 150,
+    "COYOTE_MS": 90,
+    "JUMP_BUFFER_MS": 110,
+    "FALL_GRAVITY_MULT": 1.6,
+    "JUMP_CUT": 0.45,
+    "ACCEL": 2200,
+    "DECEL": 2600
+  },
+  "swordOut": false,
+  "events": [
+    [0,"right",1],
+    [153,"left",1],
+    [153,"right",0],
+    [266,"left",0],
+    [314,"right",1],
+    [382,"right",0]
+  ]
+}

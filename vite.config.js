@@ -33,7 +33,7 @@ const MAX_BODY = 1 << 20
  * puts every element of every `[step, action, down]` triple on its own line,
  * which turns a five-second recording into a few thousand lines of diff.
  */
-function format(sol) {
+export function format(sol) {
   const events = Array.isArray(sol.events) ? sol.events : []
   const rest = { ...sol }
   delete rest.events

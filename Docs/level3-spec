@@ -1,0 +1,196 @@
+Unfolded – Level 3 build prompt for Lovable
+Paste everything below the line into the same Lovable project that has Levels 1 and 2. It adds the snake, a second crease choice, a few new puzzle pieces, Level 3 "True Shape" (three rooms), the ending, and a simple star system for replayability. Levels 1 and 2 must keep working exactly as they do now.
+Goal
+Extend Unfolded with Level 3, "True Shape", the hard tier and the finale. Level 1 taught each mechanic alone. Level 2 added steps, the sword, and the bat. Level 3 makes the mechanics interact (a fold changes the wind, a seal holds a fold, a form change is forced in the middle of a fight) and puts two enemy types in the same space as the puzzle. Priority order: fair and readable challenge, puzzles that need planning, game feel, then polish.
+Rules for working in the existing project
+• Keep Phaser 3, the same folder structure, constants.ts for every number, and the same data-driven approach: the level is a data file src/game/levels/level3.ts built by the same loader as Levels 1 and 2.
+• Reuse existing components (Switch, FoldPlatform, FoldWall, Fan, Slit, Seal, Checkpoint, PromptTag, ExitDoor, the Enemy base class, Bat) and add new ones the same way. Don't rewrite old code unless something has to change; if it does, tell me what and why.
+• No image or audio files. All art is drawn in code, all sound is Web Audio.
+• Level 3 appears automatically in the main menu and pause menu Room select, grouped under Level 3 with rooms 3A, 3B and 3C.
+• The tutorial principles still apply to the hints: short tags, shown only where needed, and never a text wall. Hard means the puzzle needs thinking, not that the controls are unclear.
+What is new in Level 3
+1.  The snake, the second enemy (built on the Enemy base class).
+2.  Venom, the snake's projectile.
+3.  Timed Switch, a switch that stays pressed for a limited time.
+4.  Fold Sheet, a horizontal sheet that blocks a fan's draught.
+5.  Fold Bridge, a folded bridge that unfolds in segments.
+6.  Seal links, a seal that can hold another object closed.
+7.  Second crease choice, after Level 2.
+8.  The ending, where the character finds its true shape.
+9.  Stars and par times, for replayability.
+The snake
+Look. Low-poly like the reference: a body of 7 triangle-and-quad segments that follow the head like a chain, coral #D85A30 with darker facets #A63D1F, thin dark outline, two small fang triangles that flash white when it is about to spit. Hitbox on the head and the first body segments: 36×16 px.
+Behaviour, as a state machine:
+State
+What it does
+Numbers
+Patrol
+Slithers back and forth along its patrol segment, fast
+140 px/s
+Rear
+Notices the player. It raises its head, hisses (short filtered noise), fangs flash white. This is the telegraph.
+0.5 s
+Vanish
+Folds flat into a thin sliver and bursts into triangles
+0.15 s
+Mark
+A glowing crease appears on the floor where it will reappear, so the player can see where it is coming
+0.3 s
+Appear
+Pops out of the mark, head toward the player
+0.1 s
+Aim
+Head turns toward the player, mouth opens, a faint dotted line shows the venom's arc
+0.4 s
+Spit
+Fires one venom blob
+see Venom
+Recover
+Head low and slow. This is the attack window.
+0.8 s
+Retreat
+Slithers away, then goes back to Patrol after a cooldown
+2.5 s cooldown
+• Notice range: 9 tiles horizontally and 3 tiles vertically.
+• Reappear position: a valid floor tile (including an unfolded bridge) 3 to 4 tiles from the player, preferably on the side the player is not facing, never on a trap tile or inside a slit.
+• Health: 2. The first sword hit staggers it for 0.4 s (flash, knockback 120 px/s) and it vanishes right after, hurt (limp animation, drawn slightly darker). The second hit kills it with a bigger triangle burst and a crunch.
+• Damage: 1 hit if the player touches its body or head. Venom does 1 hit.
+• Fairness rules: it always shows the Rear telegraph and the Mark before it attacks. It ignores a player who is flat inside a slit. It cannot spit while the player is flat inside a slit. It never appears on top of the player. The snake does not coil around the player.
+• Respawn: after dying, it respawns after 25 s at its patrol start, but only if the room has not been cleared. A room counts as cleared once the player has passed its exit for the first time.
+• Sounds: hiss (band-passed noise), a soft crumple when it vanishes, a pop when it appears, a wet spit.
+Venom
+• A dark magenta #8E2D6B triangle blob that rotates as it flies.
+• Launched at 300 px/s toward where the player was at the end of the Aim state, with gravity 600 px/s² so it travels in an arc. It does not track.
+• Destroyed on hitting a solid or the player. Damage 1.
+• Wind: inside a fan's draught venom gets +900 px/s² upward, so a gust bends the arc.
+• With the Parry crease, a slash that overlaps the venom reflects it at 1.3× speed toward the snake, and the snake takes 1 damage from it.
+New puzzle pieces
+Timed Switch. Works like Switch, but stays pressed for 7 seconds after the player steps on it, then releases. A ring around the plate empties as the time runs out, and the dotted link line to its targets fades in step with it. Reuse the switch art but draw it with a small clock-like ring.
+Fold Sheet. A thin horizontal purple sheet (4 px thick, solid). While closed it blocks a fan's draught: the fan's column is cut off just below any solid above the fan. When its trigger fires (a switch or a released seal) it folds away to the side over 0.4 s, and the column reaches its full height. A sheet never closes while the player or an enemy overlaps it; it waits until the space is clear.
+Fold Bridge. A platform made of 5 segments of 2 tiles each, starting folded (dashed ghost, no collision). On unfolding, the segments open one after another 0.1 s apart from left to right like a concertina, each swinging out around its crease with angle shading and a small dust burst. Collision turns on per segment when it lands.
+Seal links. A seal can hold another object closed (heldBy). Draw a thin teal thread from the seal to the object it holds. Cutting the seal releases the object, snaps the thread, and plays a twang.
+Second crease choice
+After the Level 2 exit door, and before Level 3 starts, show the "Choose a crease" screen again, now with two new cards. The choice is added to the first one (the player keeps both). If Level 3 is started from the menu without having made this choice, show the screen first.
+Crease
+Effect
+Quick fold
+The player can enter flat form in mid-air, and moves at 280 px/s (instead of 200) while flat. It makes slits faster and safer to use.
+Parry crease
+A slash that overlaps a venom blob reflects it at 1.3× speed and it damages the snake.
+No room requires a crease. Parry gives one alternative way to beat the snake without melee. Quick fold is a comfort upgrade and does not create a shortcut. Show the earned creases as small icons under the health.
+Visual style for Level 3
+Same paper style, with a warm dusk palette: background #EBD5CF with a faint fold-line grid, platforms cream #F7F2E8 with dark outline #2B2A33. Keep the colour language: purple #6B5FC4 folds and switches, amber #F0A93B wind, teal #2FA58A seals and slits, slate and pink bat, coral and magenta snake and venom.
+Level 3 layout
+World is 120 tiles wide and 24 tall. The main floor surface is at row 20 (y = 640 px). h means tiles above the main floor. The camera follows vertically with a gentle lerp and the same deadzone as before. Every room has a checkpoint at its entrance.
+Room 3A: Fold, wind and the bat (x 0 to 36)
+Goal of the room: the way up is blocked by a sheet that only a distant switch can open, and the switch is timed.
+• Floor h=0 from x 0 to 36, closed by a wall at x 0 on the left. Checkpoint at x 1.
+• Fan at x 6–7 on the floor. Its column (2 wide, 10 tiles tall) is cut off by the sheet below.
+• Fold Sheet at h=5, x 4–9 (6 wide), above the fan.
+• Overhang ledge, a 1-tile-thick slab from x 12 to 36 with its top at h=8 (256 px). The floor is open underneath. It can't be reached by jumping.
+• Timed Switch on the floor at x 22, under the overhang. Target: the sheet. Duration 7 s.
+• Bat hanging from a ceiling strip at x 8–11, anchor at h=12, above the landing area. It alerts as the player rises.
+• Solution: step on the timed switch, run back to the fan (about 15 tiles) before the 7 s run out, ride the draught up past the bat, and drift right onto the ledge (4 tiles from the column's edge). Walk along the ledge to the next room.
+• Why it's Hard: a timed action far from the place where it pays off, wind that only works after a fold, and a bat in the draught that bends its dive. The sheet waits if the player is still in it when the timer ends, so nobody gets crushed.
+Room 3B: Slit, seal, bridge and the snake (x 36 to 76)
+Goal of the room: open the way across a gap while a snake guards the far side.
+• This room is a raised block with its floor at h=8 from x 36 to 76. Checkpoint at x 37.
+• Slit pillar at x 40–46 (6 tiles long, 7 tiles tall, 14 px clearance).
+• Calm arena from x 46 to 52, no enemies.
+• Seal at x 52, from h=8 up to h=16 under a ceiling block, so it can't be jumped over. A teal thread runs from it to the Fold Bridge.
+• Gap from x 56 to 66 (10 tiles), with the pit floor at h=6 (2 tiles down, safe, and the player can jump out of it).
+• Fold Bridge over the gap, top at h=8, 5 segments, held closed by the seal.
+• Snake with home at x 70 and patrol from x 67 to 75, on the far side.
+• The floor continues to x 76, the exit of the room.
+• Solution: slide through the slit, unfold in the calm arena, draw the sword and cut the seal, which releases the bridge, then cross the bridge while the snake teleports and spits, and defeat or avoid it.
+• Why it's Hard: form change, then the sword, then a forced crossing under fire. The snake can reappear on the bridge itself, and a hit knocks the player toward the pit (safe), so a mistake costs time, not the whole room.
+• Parry alternative: reflect the snake's own venom to kill it from a distance.
+Room 3C: All three mechanics and both enemies (x 76 to 120)
+Goal of the room: the finale. Drop into a shaft, get past a slit and a snake, cut a seal, and use the freed draught to reach the exit under a bat.
+• Entry ledge at x 76–86 with its top at h=8. Checkpoint at x 77. The ledge ends in a drop of 8 tiles (safe) into the shaft, which has its floor at h=0 from x 86 to 120. A second checkpoint on the landing at x 87, so a reset doesn't send the player back through room 3B.
+• Slit pillar at x 90–93 (3 tiles long, 7 tiles tall, 14 px clearance), right after the landing.
+• Snake arena from x 93 to 99. The snake's home is x 96, patrol x 94–98. It ignores the player while they are flat inside the slit, and starts to Rear as they come out.
+• Seal at x 99, from h=0 to h=6 under a ceiling block. A teal thread runs up to the Fold Sheet.
+• Fold Sheet at h=9, x 100–106, above the fan, held closed by the seal.
+• Fan at x 102–103. Its column is 16 tiles tall (to h=16), cut off by the sheet until the seal is cut.
+• High platform at x 108–120 with its top at h=14 (448 px), with the exit door at x 118.
+• Bat hanging from a ceiling strip at x 104–107, anchor at h=18, above the platform's edge. It alerts as the player rises in the draught, and its dive bends in the column.
+• Solution: drop in, slide through the slit, unfold, deal with the snake (kill it, or dodge its attacks and break its rhythm), draw the sword and cut the seal, which releases the sheet, run to the fan, ride up past the bat, and drift right onto the platform.
+• Why it's Hard: every mechanic and both enemies in one connected sequence, where the player must decide when to fight and when to move.
+Level data
+Write level3.ts in the same shape as the others. Examples of the new entities:
+{ id: 'tsw1', type: 'TimedSwitch', x: 22, h: 0, targets: ['sheet1'], duration: 7 },
+{ id: 'sheet1', type: 'FoldSheet', x: 4, w: 6, h: 5, blocksFan: 'fan1' },
+{ id: 'fan1', type: 'Fan', x: 6, w: 2, floorH: 0, columnH: 10 },
+{ id: 'bridge1', type: 'FoldBridge', x: 56, w: 10, topH: 8, segments: 5, heldBy: 'seal1' },
+{ id: 'seal1', type: 'Seal', x: 52, floorH: 8, topH: 16 },
+{ id: 'snake1', type: 'Snake', homeX: 70, patrolFrom: 67, patrolTo: 75, floorH: 8 },
+{ id: 'seal2', type: 'Seal', x: 99, floorH: 0, topH: 6 },
+{ id: 'sheet2', type: 'FoldSheet', x: 100, w: 6, h: 9, heldBy: 'seal2', blocksFan: 'fan2' },
+{ id: 'fan2', type: 'Fan', x: 102, w: 2, floorH: 0, columnH: 16 }
+Every feel or balance number in this document goes in constants.ts.
+Difficulty rules to keep
+• Each Hard room needs 3 or more steps and at least two mechanics affecting each other.
+• Every attack has a telegraph, and no attack lands on a player who could not see it coming.
+• A failed attempt costs time, never the whole level: shallow pits, checkpoints at every room entrance, and one extra checkpoint after the 3C drop.
+• Nothing is required from a crease.
+Hints
+Short paper tags only: in 3A "The switch is timed" near the switch and "The sheet blocks the wind" near the fan, in 3B "Cut it" at the seal, "Watch the crease" the first time a snake Mark appears, and, if the player has Parry, "Slash the venom" the first time venom flies. After 3 failures at the same spot its tag reappears with a gentle pulse. Never solve it for the player.
+The ending
+Walking into the 3C exit door starts a short sequence of about 12 seconds, all drawn in code:
+1.  The player stops and the paper pieces that make the figure drift apart and float.
+2.  The pieces unfold one by one into a single flat, blank paper square, which is the character's true shape. Soft chime notes rise as each piece lands.
+3.  The camera pulls back to show the three levels as a pattern of creases on that same sheet.
+4.  The title "Unfolded" fades in.
+5.  Then the Game complete screen: total time, total resets, total hits taken, the creases chosen, and a line suggesting to replay with the other creases. Buttons: Play again, Main menu.
+The player must be able to skip it with Enter after the first 2 seconds.
+Stars and par times
+Every room in all three levels shows up to 3 paper stars in Room select, kept for the session:
+• Star 1: finish the room.
+• Star 2: finish under the room's par time.
+• Star 3: finish with no hits taken and no resets.
+Room
+Par (s)
+Room
+Par (s)
+Room
+Par (s)
+1A
+20
+2A
+35
+3A
+50
+1B
+20
+2B
+45
+3B
+60
+1C
+25
+2C
+50
+3C
+80
+Par times go in constants.ts so they can be tuned after playtesting. Show best time and fewest resets next to each room, as already done for Levels 1 and 2.
+HUD and menus
+• HUD: room name, reset counter, timer, three health triangles, and the crease icons.
+• Room select in both menus: Levels 1, 2 and 3 grouped, with stars and best times.
+• The pause menu must still pause everything correctly: enemies, venom, timers (including the timed switch), fans, particles and sounds.
+Acceptance checklist
+• Levels 1 and 2 still work exactly as before.
+• The snake's states are clear: Rear, Vanish, Mark, Appear, Aim, Spit, Recover. Every attack has a telegraph. Two hits kill it. It ignores a flat player inside a slit and never appears on top of the player.
+• Venom arcs, bends in a draught, and with Parry is reflected and damages the snake.
+• 3A: the sheet blocks the draught until the timed switch is pressed, the timer is clearly shown, and the sheet never closes on the player.
+• 3B: the seal releases the bridge in segments, the pit is safe, and the snake can reappear on the bridge.
+• 3C: the seal releases the sheet, the draught then reaches full height, and the exit is only reachable by riding it. The mid-room checkpoint works.
+• Both crease choices work, no crease is required, and the second choice appears after Level 2.
+• The ending plays, can be skipped, and the Game complete screen shows the right stats.
+• Stars and par times show up in Room select for all nine rooms.
+• Backspace resets any room instantly, and pausing and resuming breaks nothing.
+• No console errors and no external assets.
+Do not build yet
+A third crease choice, new enemy types, bosses, the coil-and-smash snake attack, the bow, the paper plane, the companion, saving to disk, or any network call.
+After building
+Reply with the list of files created and changed, and every number you changed from this spec with the reason. Also tell me if Levels 1 or 2 needed any change.

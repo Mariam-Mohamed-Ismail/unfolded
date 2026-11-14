@@ -1,5 +1,7 @@
 import { Bat } from './Bat.ts'
 import { Checkpoint } from './Checkpoint.ts'
+import { FoldBridge } from './FoldBridge.ts'
+import { FoldSheet } from './FoldSheet.ts'
 import { Entity } from './Entity.ts'
 import { Dummy } from './Dummy.ts'
 import { ExitDoor } from './ExitDoor.ts'
@@ -11,6 +13,7 @@ import { PromptTag } from './PromptTag.ts'
 import { Seal } from './Seal.ts'
 import { Slit } from './Slit.ts'
 import { Switch } from './Switch.ts'
+import { TimedSwitch } from './TimedSwitch.ts'
 import type { EntityContext } from './Entity.ts'
 import type { EntitySpec } from '../levels/types.ts'
 
@@ -81,12 +84,15 @@ export function createRegistry(): EntityRegistry {
   return new EntityRegistry()
     .register('Checkpoint', (spec, ctx) => new Checkpoint(spec, ctx))
     .register('Switch', (spec, ctx) => new Switch(spec, ctx))
+    .register('TimedSwitch', (spec, ctx) => new TimedSwitch(spec, ctx))
     .register('FoldPlatform', (spec, ctx) => new FoldPlatform(spec, ctx))
     .register('PromptTag', (spec, ctx) => new PromptTag(spec, ctx))
     .register('Slit', (spec, ctx) => new Slit(spec, ctx))
     .register('Seal', (spec, ctx) => new Seal(spec, ctx))
     .register('Fan', (spec, ctx) => new Fan(spec, ctx))
     .register('FoldWall', (spec, ctx) => new FoldWall(spec, ctx))
+    .register('FoldSheet', (spec, ctx) => new FoldSheet(spec, ctx))
+    .register('FoldBridge', (spec, ctx) => new FoldBridge(spec, ctx))
     .register('Bat', (spec, ctx) => new Bat(spec, ctx))
     .register('Pickup', (spec, ctx) => new Pickup(spec, ctx))
     .register('ExitDoor', (spec, ctx) => new ExitDoor(spec, ctx))

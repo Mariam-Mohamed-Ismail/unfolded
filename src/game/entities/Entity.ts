@@ -39,6 +39,8 @@ export type SoundName =
   | 'tear'
   /** The bat's two-note alert. */
   | 'sting'
+  /** A seal's thread snapping. */
+  | 'twang'
 
 export type Fx = {
   dust: (x: number, y: number, count: number, color?: number) => void
@@ -111,6 +113,12 @@ export type EntityWorld = {
    * fan column without the fan and the bat knowing about each other.
    */
   liftAt: (box: Box) => Updraft | null
+  /**
+   * Is anybody standing in `box`? The player, or anything with a hurt box —
+   * which is every enemy. A sheet asks before closing, so it never closes on
+   * someone, and it does that without knowing what an enemy is.
+   */
+  occupied: (box: Box) => boolean
 }
 
 export type EntityStateValue = number | boolean | string
@@ -152,6 +160,10 @@ export class Entity {
 
   /** Ids this entity drives, straight from the data. */
   readonly targetIds: readonly string[]
+  /** Id of the seal holding this one closed, if any. */
+  readonly heldById: string | null
+  /** The same, resolved by link(). A seal holds; this is what holds us. */
+  holder: Entity | null = null
   /** The same, resolved to entities by link(). Empty until then. */
   readonly targets: Entity[] = []
 
@@ -166,6 +178,7 @@ export class Entity {
     this.y = ctx.surfaceY(this.th)
     this.w = this.tw * TILE
     this.targetIds = spec.targets ?? []
+    this.heldById = spec.heldBy ?? null
   }
 
   /** Middle of the entity, which is what you aim at or spawn on. */
@@ -189,6 +202,20 @@ export class Entity {
         continue
       }
       this.targets.push(found)
+    }
+
+    // The seal holding this one closed, resolved in the same pass and with
+    // the same forgiveness: a dangling id warns rather than throwing.
+    this.holder = null
+    if (this.heldById !== null) {
+      const found = byId.get(this.heldById)
+      if (!found) {
+        console.warn(
+          `Entity ${this.id}: no entity with id "${this.heldById}" to be held by`,
+        )
+      } else {
+        this.holder = found
+      }
     }
   }
 
@@ -250,6 +277,24 @@ export class Entity {
   swordOut(): boolean {
     return false
   }
+
+  /**
+   * Does this thing go where the player goes?
+   *
+   * A room only ticks its own entities, which is right for furniture and
+   * wrong for anything being carried: sword pieces orbiting the player
+   * would freeze at the room border and stop answering R. Anything that
+   * says yes here is updated wherever the player is.
+   */
+  travels(): boolean {
+    return false
+  }
+
+  /**
+   * Put the blade out or away. Only the sword pieces do anything; it exists
+   * so a replay can start from the state it was recorded in.
+   */
+  setDrawn(_on: boolean): void {}
 
   /**
    * Is this thing moving the air where `box` is? The player asks the level

@@ -138,7 +138,12 @@ export class GameScene extends Phaser.Scene {
     this.badge = new ToolBadge(this)
     this.clock.reset()
 
-    this.cam = new Camera(this, this.level.widthPx, this.level.heightPx)
+    this.cam = new Camera(
+      this,
+      this.level.widthPx,
+      this.level.heightPx,
+      data.camLerpY,
+    )
     this.cam.follow(this.player.x, this.player.y)
 
     // What entities are allowed to make happen. Wired once, here, so no
@@ -156,6 +161,7 @@ export class GameScene extends Phaser.Scene {
         else if (name === 'hit') this.audio.hit()
         else if (name === 'tear') this.audio.tear()
         else if (name === 'sting') this.audio.sting()
+        else if (name === 'twang') this.audio.twang()
         else this.audio.whoosh()
       },
       label: (id, x, y, text, size, alpha) =>
@@ -465,11 +471,18 @@ export class GameScene extends Phaser.Scene {
           this.say(`retuned since: ${drift.join(' ')}`)
           return
         }
-        if (sol.swordOut !== undefined && sol.swordOut !== this.level.swordOut()) {
-          this.say(sol.swordOut ? 'needs the sword drawn (R)' : 'needs it sheathed (R)')
-          return
-        }
         this.toRoomStart()
+        // The blade's drawn state is part of what the recording started
+        // from, and a room reset does not touch it - you keep your sword.
+        // So set it rather than refuse: the recording's R presses are edges
+        // and would otherwise toggle the wrong way.
+        if (sol.swordOut !== undefined) {
+          this.level.setSwordOut(sol.swordOut)
+          if (sol.swordOut !== this.level.swordOut()) {
+            this.say(sol.swordOut ? 'needs the sword drawn (R)' : 'needs it sheathed (R)')
+            return
+          }
+        }
         this.playback = new Playback(sol)
         this.note = ''
       },

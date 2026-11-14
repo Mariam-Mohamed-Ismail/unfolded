@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "check": "node --experimental-strip-types --no-warnings --import ./tests/hook.mjs tests/run.mjs"
+    "check": "node --experimental-strip-types --no-warnings --import ./tests/hook.mjs tests/run.mjs",
+    "record": "node --experimental-strip-types --no-warnings --import ./tests/hook.mjs tests/record.mjs"
   },
   "devDependencies": {
     "typescript": "~7.0.2",

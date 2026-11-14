@@ -1,0 +1,20 @@
+Phase 1 – Level 3 puzzles
+Step L3-1 – Level 3 skeleton
+Goal: Level 3 exists with three empty rooms, a new palette, a camera that follows vertically, and shows up in both room selects.
+Test: you can pick 3A, 3B or 3C from the main menu and the pause menu, spawn on the right floor, and the camera follows up and down without jerking. Levels 1 and 2 still work.
+
+
+Step L3-2 – Timed switch, fold sheet and room 3A
+Goal: the first Hard room: a timed action far from where it pays off, and wind that only works after a fold.
+Test: the fan does nothing useful while the sheet is closed. Pressing the switch opens the sheet and the draught reaches full height. The timer is clearly visible. If the timer ends while you are in the sheet, it waits and doesn't crush you. The ledge can't be reached by jumping.
+
+Step L3-3 – Fold bridge, seal links and room 3B
+Goal: form change, then the sword, then a forced crossing.
+Test: you can't pass the slit standing, you can't cut the seal while flat, cutting it unfolds the bridge segment by segment, and the pit under the gap is shallow enough to jump out of. Without the bridge the gap can't be crossed.
+
+Step L3-4 – Room 3C
+Goal: the finale puzzle, all three mechanics in one sequence.
+Test: after dropping in you must pass the slit, cut the seal, and then the sheet opens and the draught reaches the platform. Reset after the drop returns you to the second checkpoint, not to 3B. You can't reach the platform any other way.
+
+Step L3-5 – Recorded solutions for Level 3
+Goal: proof that every Level 3 room can be solved without enemies.

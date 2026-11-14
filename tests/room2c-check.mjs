@@ -706,6 +706,12 @@ const foot = (p) => p.y + p.halfH()
         folded: false, sword: false, slash: false, failedAt: null,
       },
       swordOut: false,
+      // Fan now asks how far up the air can go, so the world it is handed
+      // needs the collision list. Level 1's own solids, so the answer is
+      // the real one.
+      solids: l1.solids,
+      liftAt: () => null,
+      occupied: () => false,
       fx: { dust: () => {}, shake: () => {}, zoom: () => {}, sound: () => {}, label: () => {}, hum: () => {} },
     })
     if (!f1.isOn() && offAt < 0) offAt = i

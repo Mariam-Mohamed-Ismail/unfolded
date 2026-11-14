@@ -41,15 +41,15 @@ const FLASH = LINK_FLASH_MS / 1000
  * room explains its own cause and effect.
  */
 export class Switch extends Entity {
-  private plateX: number
-  private plateY: number
-  private purple: number
+  protected plateX: number
+  protected plateY: number
+  protected purple: number
   /** 'unfold' opens its targets; 'fold' folds them back. */
-  private mode: FoldMode
-  private pressed = false
+  protected mode: FoldMode
+  protected pressed = false
   /** Seconds since the press, which drives the ripple and the link line. */
-  private clock = 0
-  private pulseClock = 0
+  protected clock = 0
+  protected pulseClock = 0
 
   constructor(spec: EntitySpec, ctx: EntityContext) {
     super(spec, ctx)
@@ -117,7 +117,7 @@ export class Switch extends Entity {
     return { ...super.serialize(), state: { pressed: this.pressed, mode: this.mode } }
   }
 
-  private press(): void {
+  protected press(): void {
     this.pressed = true
     this.clock = 0
     // Unfolding runs down the list; folding runs back up it, so the steps
@@ -132,7 +132,7 @@ export class Switch extends Entity {
    * move, then fades: the room explains itself once rather than carrying the
    * explanation around forever.
    */
-  private drawLinks(g: Phaser.GameObjects.Graphics): void {
+  protected drawLinks(g: Phaser.GameObjects.Graphics): void {
     const age = this.clock - HOLD
     if (age > FADE) return
     const alpha = age <= 0 ? 1 : 1 - age / FADE
@@ -157,7 +157,7 @@ export class Switch extends Entity {
   }
 
   /** The box the player has to touch. Taller than the plate, so it is kind. */
-  private triggerBox(): Box {
+  protected triggerBox(): Box {
     return {
       left: this.plateX,
       right: this.plateX + SWITCH_W,
@@ -168,6 +168,6 @@ export class Switch extends Entity {
 }
 
 /** Touching exactly flush is not an overlap, matching the player's collision. */
-function overlaps(a: Box, b: Box): boolean {
+export function overlaps(a: Box, b: Box): boolean {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
 }

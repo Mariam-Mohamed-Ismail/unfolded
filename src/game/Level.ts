@@ -2,7 +2,7 @@ import * as Phaser from 'phaser'
 import { Checkpoint } from './entities/Checkpoint.ts'
 import { Room } from './Room.ts'
 import { createRegistry } from './entities/EntityRegistry.ts'
-import { COLOR_SOLID, PLAYER_H, TILE } from './constants.ts'
+import { COLOR_SOLID, PLAYER_H, SOLID_OUTLINE, TILE } from './constants.ts'
 import type { EntityRegistry } from './entities/EntityRegistry.ts'
 import type { Box, Buttons, Entity, EntityWorld, Fx } from './entities/Entity.ts'
 import type { LevelData } from './levels/types.ts'
@@ -70,9 +70,11 @@ export class Level {
     fx: NO_FX,
     solids: [],
     liftAt: () => null,
+    occupied: () => false,
   }
   /** liftAt, bound once, so handing it to entities allocates nothing. */
   private boundLiftAt = (box: Box): Updraft | null => this.liftAt(box)
+  private boundOccupied = (box: Box): boolean => this.occupied(box)
   /** Set by failedAt(), consumed by the next update. */
   private failed: number | null = null
   /** Set by pressed(), consumed by the next update. */
@@ -129,8 +131,13 @@ export class Level {
   }
 
   draw(scene: Phaser.Scene): void {
+    // The platforms' colour belongs to the level when it names one. Levels
+    // that do not keep COLOR_SOLID, so nothing already built changes.
+    const fill = this.data.palette.solid ?? COLOR_SOLID
+    const line = this.data.palette.line
     for (const s of this.solids) {
-      scene.add.rectangle(s.x, s.y, s.w, s.h, COLOR_SOLID).setOrigin(0, 0)
+      const rect = scene.add.rectangle(s.x, s.y, s.w, s.h, fill).setOrigin(0, 0)
+      if (line !== undefined) rect.setStrokeStyle(SOLID_OUTLINE, line)
     }
   }
 
@@ -202,8 +209,19 @@ export class Level {
     // list and the air, and both are the level's to answer.
     this.world.solids = this.solids
     this.world.liftAt = this.boundLiftAt
+    this.world.occupied = this.boundOccupied
 
     this.current?.update(dt, this.world)
+
+    // Anything being carried is ticked wherever the player is, not only in
+    // the room it was placed in. Without this, sword pieces stop responding
+    // to R the moment you leave the room they came from.
+    const here = this.current
+    for (const entity of this.entities.all) {
+      if (!entity.travels()) continue
+      if (here && here.entities.includes(entity)) continue
+      entity.update(dt, this.world)
+    }
   }
 
   /**
@@ -218,6 +236,21 @@ export class Level {
       if (lift) return lift
     }
     return null
+  }
+
+  /**
+   * Is anybody standing in `box`? The player, or anything in the room with a
+   * hurt box, which is every enemy. What a sheet asks before it closes.
+   */
+  occupied(box: Box): boolean {
+    if (hits(this.world.player.box, box)) return true
+    const room = this.current
+    if (!room) return false
+    for (const entity of room.entities) {
+      const b = entity.hurtBox()
+      if (b && hits(b, box)) return true
+    }
+    return false
   }
 
   /**
@@ -262,6 +295,15 @@ export class Level {
     const room = this.current
     if (!room) return []
     return room.entities.filter((e) => e.hurtBox() !== null)
+  }
+
+  /**
+   * Put the blade into a known state. Used before a replay: a recording
+   * made with the blade away contains an R press meant to draw it, and
+   * starting with it already out would sheathe it instead.
+   */
+  setSwordOut(on: boolean): void {
+    for (const entity of this.entities.all) entity.setDrawn(on)
   }
 
   /** Is the player holding the blade? */
@@ -328,4 +370,9 @@ export class Level {
     this.current = room
     room?.reset()
   }
+}
+
+/** Touching exactly flush is not an overlap, matching the player's collision. */
+function hits(a: Box, b: Box): boolean {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
 }

@@ -1,5 +1,6 @@
 import { level1 } from './level1.ts'
 import { level2 } from './level2.ts'
+import { level3 } from './level3.ts'
 import type { LevelData } from './types.ts'
 
 /**
@@ -8,7 +9,7 @@ import type { LevelData } from './types.ts'
  * The room select reads this rather than naming level 1, so adding a level
  * here makes its rooms appear in the menu with no menu change.
  */
-export const LEVELS: LevelData[] = [level1, level2]
+export const LEVELS: LevelData[] = [level1, level2, level3]
 
 /** The level a fresh Play starts in. */
 export const FIRST_LEVEL = LEVELS[0]

@@ -62,6 +62,15 @@ export class Seal extends Entity {
     return this.cut
   }
 
+  /**
+   * A cut seal is a finished job, which is what anything it was holding
+   * asks about. The read-side twin of trigger(), the same contract a prompt
+   * tag's "target" action already uses.
+   */
+  done(): boolean {
+    return this.cut
+  }
+
   /** Glowing means: the blade is out and you are close enough. */
   isGlowing(): boolean {
     return this.showing && !this.cut

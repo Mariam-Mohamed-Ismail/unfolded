@@ -63,6 +63,10 @@ import {
   SFX_STING_NOTE_MS,
   SFX_STING_STEP_MS,
   SFX_THUD_FROM_HZ,
+  SFX_TWANG_FROM_HZ,
+  SFX_TWANG_GAIN,
+  SFX_TWANG_MS,
+  SFX_TWANG_TO_HZ,
   SFX_THUD_GAIN,
   SFX_THUD_MS,
   SFX_THUD_TO_HZ,
@@ -246,6 +250,34 @@ export class Audio {
       osc.start(at)
       osc.stop(at + dur)
     }
+  }
+
+  /**
+   * A thread snapping: a short plucked tone that falls away fast. Shares
+   * the shape of the sting and the thud, which is this file's one tone
+   * voice pattern.
+   */
+  twang(): void {
+    const ctx = this.wake()
+    if (!ctx || !this.master) return
+    this.played++
+
+    const at = ctx.currentTime
+    const dur = SFX_TWANG_MS / 1000
+    const osc = ctx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(SFX_TWANG_FROM_HZ, at)
+    osc.frequency.exponentialRampToValueAtTime(SFX_TWANG_TO_HZ, at + dur)
+
+    const env = ctx.createGain()
+    env.gain.setValueAtTime(SILENT, at)
+    env.gain.linearRampToValueAtTime(SFX_TWANG_GAIN, at + Math.min(ATTACK, dur / 2))
+    env.gain.exponentialRampToValueAtTime(SILENT, at + dur)
+
+    osc.connect(env)
+    env.connect(this.master)
+    osc.start(at)
+    osc.stop(at + dur)
   }
 
   /**

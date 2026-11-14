@@ -33,14 +33,26 @@ export class Camera {
    * (0, 0) and following it followed nothing.
    */
   private anchor = { x: 0, y: 0 }
+  /**
+   * How hard the view follows vertically. Horizontal stays on CAM_LERP: a
+   * view that keeps up sideways should not also chase a jump, and a level
+   * tall enough to scroll says how gentle it wants to be.
+   */
+  private lerpY: number
   /** Seconds left of the zoom pulse. */
   private zoomT = 0
   /** Seconds left of the damage tint, and the Graphics it is drawn into. */
   private tintT = 0
   private tint: Phaser.GameObjects.Graphics
 
-  constructor(scene: Phaser.Scene, levelWidth: number, levelHeight: number) {
+  constructor(
+    scene: Phaser.Scene,
+    levelWidth: number,
+    levelHeight: number,
+    lerpY = CAM_LERP,
+  ) {
     this.cam = scene.cameras.main
+    this.lerpY = lerpY
     // Clamped to the world, so following never shows past the edges.
     this.cam.setBounds(
       0,
@@ -62,7 +74,7 @@ export class Camera {
   follow(x: number, y: number): void {
     this.anchor.x = x
     this.anchor.y = y
-    this.cam.startFollow(this.anchor, false, CAM_LERP, CAM_LERP)
+    this.cam.startFollow(this.anchor, false, CAM_LERP, this.lerpY)
     this.cam.centerOn(x, y)
   }
 

@@ -420,7 +420,10 @@ clearCrease()
 
   const flow = new Flow(game)
   record(flow.hasNext(0) === true, 'there is a level after Level 1')
-  record(flow.hasNext(1) === false, 'and none after Level 2')
+  // L3-1 added Level 3, so Level 2's end now offers Continue rather than
+  // Play again. The last level is the one that offers Play again.
+  record(flow.hasNext(1) === true, 'and one after Level 2')
+  record(flow.hasNext(2) === false, 'and none after Level 3')
 
   clearCrease()
   started.length = 0

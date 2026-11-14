@@ -390,11 +390,13 @@ const same = (a, b, tol = 0) => {
 // =====================================================================
 {
   const groups = roomGroups()
-  record(groups.length === 2, `Room select is built from ${groups.length} levels`)
+  record(groups.length === 3, `Room select is built from ${groups.length} levels`)
   // Level 1 has four: the movement lane is a room in its own right.
   record(
-    groups[0].choices.length === 4 && groups[1].choices.length === 3,
-    `listing ${groups.map((g) => g.choices.map((c) => c.room).join('/')).join(' and ')}`,
+    groups[0].choices.length === 4 &&
+      groups[1].choices.length === 3 &&
+      groups[2].choices.length === 3,
+    `listing ${groups.map((g) => g.choices.map((c) => c.room).join('/')).join(' | ')}`,
   )
   const ids = groups.flatMap((g) => g.choices.map((c) => c.room))
   record(
@@ -439,6 +441,10 @@ const same = (a, b, tol = 0) => {
   record(
     level1.rooms.length === 4 && level2.rooms.length === 3,
     `Level 1 declares ${level1.rooms.length} rooms and Level 2 declares ${level2.rooms.length}`,
+  )
+  record(
+    groups[2].choices.every((c) => c.level === 2),
+    "and Level 3's entries carry level 2, so they start the right level",
   )
 }
 

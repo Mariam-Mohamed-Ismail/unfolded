@@ -65,6 +65,20 @@ export type EntitySpec = {
   period?: number
   /** Clearance under a slit, in pixels. */
   clearancePx?: number
+  /** How long a timed switch stays pressed, in seconds. */
+  duration?: number
+  /**
+   * For a Pickup: the player already has these pieces, so they orbit from
+   * the first frame rather than waiting to be walked into.
+   */
+  carried?: boolean
+  /** How many panels a fold bridge is made of. */
+  segments?: number
+  /**
+   * Id of the seal holding this thing closed. It sits on the held object
+   * and names the seal, which is the shape the spec's own data uses.
+   */
+  heldBy?: string
 }
 
 /**
@@ -95,6 +109,14 @@ export type Palette = {
   wind: number
   /** Seals, slits and pickups. */
   form: number
+  /**
+   * The platforms. Optional: a level that leaves it out keeps the module's
+   * COLOR_SOLID, which is what Levels 1 and 2 are drawn with and must stay
+   * drawn with. Level 3 is the first to name its own.
+   */
+  solid?: number
+  /** An outline around the platforms, drawn only if given. */
+  line?: number
 }
 
 export type LevelData = {
@@ -111,6 +133,12 @@ export type LevelData = {
    * nothing could ever empty.
    */
   hazards?: boolean
+  /**
+   * How hard the camera follows vertically. Only a level tall enough to
+   * scroll needs it; one that leaves it out follows on CAM_LERP as before,
+   * which is how Levels 1 and 2 stay exactly as they are.
+   */
+  camLerpY?: number
   spawn: { x: number; h: number }
   solids: SolidSpec[]
   entities: EntitySpec[]

@@ -32,7 +32,7 @@ type Mode = 'anchored' | 'swirling' | 'orbiting' | 'sword'
  * knows the sword exists.
  */
 export class Pickup extends Entity {
-  private mode: Mode = 'anchored'
+  private mode: Mode
   private clock = 0
   private swirl = 0
   /** Where the pieces orbit: the anchor, or the player. */
@@ -41,6 +41,12 @@ export class Pickup extends Entity {
   constructor(spec: EntitySpec, ctx: EntityContext) {
     super(spec, ctx)
     this.center = [this.centerX(), this.y]
+    // `carried` means the player already found these pieces in an earlier
+    // level, so they orbit from the first frame and only need drawing with
+    // R. Without it, a level that assumes the blade is unfinishable when
+    // its later rooms are entered straight from Room select: the pieces sit
+    // untouched back in the first room.
+    this.mode = spec.carried === true ? 'orbiting' : 'anchored'
   }
 
   /** Carried or folded: the lesson "touch the pieces" is done. */
@@ -50,6 +56,24 @@ export class Pickup extends Entity {
 
   isSword(): boolean {
     return this.mode === 'sword'
+  }
+
+  /** Once the pieces are on the player they follow them between rooms. */
+  travels(): boolean {
+    return this.mode !== 'anchored'
+  }
+
+  /**
+   * Force the blade out or away, for anything that has to start from a
+   * known state - a replay, which was recorded with the blade one way and
+   * whose R presses would otherwise do the opposite.
+   *
+   * Only meaningful once the pieces are carried: there is nothing to draw
+   * while they are still sitting on the floor.
+   */
+  setDrawn(on: boolean): void {
+    if (this.mode === 'anchored' || this.mode === 'swirling') return
+    this.mode = on ? 'sword' : 'orbiting'
   }
 
   /** Sword.ts draws the blade and swings it; this just reports it is out. */

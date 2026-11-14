@@ -9,6 +9,8 @@ const gfx = {
   setDepth: noop, setVisible: noop, strokeRect: noop, fillRect: noop,
   // Entity drawing: quads, dashes, rings.
   fillPoints: noop, strokePoints: noop, lineBetween: noop, strokeCircle: noop,
+  // A platform rectangle's outline, which Level 3's palette asks for.
+  setStrokeStyle: noop, setFillStyle: noop,
   destroy: noop,
 }
 const txt = {

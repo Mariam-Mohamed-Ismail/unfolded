@@ -54,6 +54,12 @@ export class Fan extends Entity {
   private draught: Updraft
 
   private clock = 0
+  /**
+   * The underside of the lowest solid over the grille, or -Infinity when
+   * there is nothing up there. Recomputed each update from the world's
+   * collision list, since what is overhead can fold away.
+   */
+  private ceilingY = -Infinity
   private motes: Mote[] = []
   private owed = 0
   /** A fan with no period is simply always on, as Level 1's is. */
@@ -116,7 +122,11 @@ export class Fan extends Entity {
     return {
       left: this.x,
       right: this.x + this.w,
-      top: this.topY,
+      // The ceiling, if anything is overhead. A sheet closed over the
+      // grille cuts the draught off under itself; fold it aside and the
+      // column reaches its full height again. The fan never learns what a
+      // sheet is — it only asks how far up the air can go.
+      top: Math.max(this.topY, this.ceilingY),
       bottom: this.floorY,
     }
   }
@@ -134,6 +144,7 @@ export class Fan extends Entity {
 
   update(dt: number, world: EntityWorld): void {
     this.clock += dt
+    this.findCeiling(world)
     const on = this.isOn()
 
     // Turning on: the blades wind up from slow, and a batch of motes shoots
@@ -185,6 +196,24 @@ export class Fan extends Entity {
     if (!on) level = 0
     else if (this.isWarning()) level *= FAN_HUM_WARN
     world.fx.hum(this.id, level)
+  }
+
+  /**
+   * How far up the air can reach: the underside of the lowest solid that
+   * overlaps the grille and sits above it. Nothing overhead leaves the
+   * column its full height, which is every fan in Levels 1 and 2.
+   */
+  private findCeiling(world: EntityWorld): void {
+    let lowest = -Infinity
+    for (const s of world.solids) {
+      // Must overlap the column horizontally...
+      if (s.x >= this.x + this.w || s.x + s.w <= this.x) continue
+      const under = s.y + s.h
+      // ...and be above the grille rather than the floor it stands on.
+      if (under > this.floorY - FAN_BODY_H) continue
+      if (under > lowest) lowest = under
+    }
+    this.ceilingY = lowest
   }
 
   private spawnMote(): void {
