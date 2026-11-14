@@ -50,15 +50,23 @@ function room(tileX, h = 0) {
     dir: 0, jumpPressed: false, jumpReleased: false, jumpHeld: false,
     dashPressed: false, flatHeld: false,
   }
+  // Damage wired exactly as GameScene wires it, so the bat is as dangerous
+  // here as it is in the game.
+  let hurt = 0
   const step = () => {
     p.update(DT, input, level.solids, level.updraftAt(p))
     level.update(DT, p, r.fx)
+    const from = level.dangerAt(level.boxOf(p))
+    if (from !== null) {
+      hurt++
+      p.hurt(M.sign(p.x - from) || 1)
+    }
     input.jumpPressed = false
     input.jumpReleased = false
     input.dashPressed = false
   }
   step()
-  return { level, p, input, step, log: r.log }
+  return { level, p, input, step, log: r.log, hits: () => hurt }
 }
 
 const base = new Level(level2)
@@ -513,6 +521,173 @@ const foot = (p) => p.y + p.halfH()
   const tag = ride.level.entities.byId('tipFans')
   for (let f = 0; f < 20; f++) ride.step()
   record(tag.done(), 'and riding a fan clears it')
+}
+
+// =====================================================================
+//  Step L2-8b: the bat over the crossing.
+// =====================================================================
+{
+  const strip = base.solids.find((s) => s.x === 73 * TILE)
+  record(!!strip, "2C's ceiling strip is at x73")
+  record(
+    !!strip && strip.w === 4 * TILE,
+    `running to x77 (${strip ? strip.w / TILE : '?'} tiles)`,
+  )
+  const under = PIT - (strip.y + strip.h)
+  record(
+    M.abs(under - 10 * TILE) < 1,
+    `its underside is ${under.toFixed(0)}px above the pit floor, which is the spec's h8`,
+  )
+
+  const bat = base.entities.byId('bat2')
+  record(!!bat, "and 2C's bat hangs from it")
+  const box = bat.hurtBox()
+  record(
+    !!box && M.abs((box.left + box.right) / 2 - 75 * TILE) < 2,
+    `centred on x${((box.left + box.right) / 2 / TILE).toFixed(1)}, the middle of its strip`,
+  )
+  record(
+    base.roomAt(bat.centerX()).id === '2c',
+    'inside room 2C, between the two fan columns',
+  )
+}
+
+// --- the clearance under the strip, measured on a real ride ---
+{
+  const t = room(71.5, -2)
+  const strip = t.level.solids.find((s) => s.x === 73 * TILE)
+  const under = PIT - (strip.y + strip.h)
+  let head = 0
+  for (let f = 0; f < 60 * 8; f++) {
+    const up = PIT - foot(t.p)
+    // Ride, then break right across under the strip: the worst case.
+    t.input.dir = up > 160 ? 1 : 0
+    head = M.max(head, PIT - (t.p.y - t.p.halfH()))
+    t.step()
+  }
+  record(
+    head < under,
+    `riding fan A the player's head reaches ${head.toFixed(0)}px against the strip's ${under.toFixed(0)}px: ${(under - head).toFixed(0)}px of clearance`,
+  )
+  record(
+    under - head < 16,
+    `which is tight enough to be worth knowing - it is ${(under - head).toFixed(0)}px, and it depends on GRAVITY, which the F1 panel can change`,
+  )
+}
+
+// --- the room, start to finish, with the bat live ---
+{
+  const t = room(63)
+  const colB = t.level.entities.byId('fanB').column()
+  const bat = t.level.entities.byId('bat2')
+  const mark = colB.left + 1.2 * TILE
+  let dashed = false
+  let landed = false
+  let frames = 0
+  const seen = new Set()
+  for (; frames < 60 * 60 && !t.level.finished(); frames++) {
+    const up = PIT - foot(t.p)
+    if (t.p.grounded && foot(t.p) <= TOP + 1) landed = true
+    seen.add(bat.phase())
+    if (landed) {
+      t.input.dir = 1
+    } else if (t.p.grounded) {
+      t.input.dir = M.abs(t.p.x - mark) < 6 ? 0 : M.sign(mark - t.p.x)
+    } else if (up < 160) {
+      t.input.dir = 0
+    } else {
+      t.input.dir = 1
+      const free = t.level.updraftAt(t.p) === null
+      if (!dashed && up > 180 && free && t.p.x > colB.left) {
+        t.input.dashPressed = true
+        dashed = true
+      }
+    }
+    t.step()
+  }
+  record(landed, 'with the bat in the pit, the run still reaches the platform')
+  record(
+    t.level.finished(),
+    `and finishes the room in ${(frames / 60).toFixed(1)}s`,
+  )
+  record(
+    t.hits() < 3,
+    `costing ${t.hits()} of the player's 3 hits, so the room is harder but not lethal`,
+  )
+  record(
+    seen.has('alert') && seen.has('dive'),
+    `the bat does wake on the way through: ${[...seen].join(', ')}`,
+  )
+}
+
+// --- the leg that decides the room is unchanged ---
+{
+  function lastLeg(driftAt, dashAt) {
+    const t = room(78.9, -2)
+    let dashed = false
+    for (let f = 0; f < 60 * 14; f++) {
+      const up = PIT - foot(t.p)
+      t.input.dir = up >= driftAt ? 1 : 0
+      if (dashAt !== null && !dashed && up >= dashAt && !t.p.grounded) {
+        t.input.dashPressed = true
+        dashed = true
+      }
+      t.step()
+      if (t.p.grounded && foot(t.p) <= TOP + 1 && t.p.x > 84 * TILE) {
+        return { ok: true, margin: t.p.x - 84 * TILE, hits: t.hits() }
+      }
+    }
+    return { ok: false, margin: t.p.x - 84 * TILE, hits: t.hits() }
+  }
+
+  let wins = 0
+  let tries = 0
+  let best = null
+  for (const driftAt of [120, 160, 200, 230, 250, 256, 262, 270]) {
+    for (const dashAt of [null, 200, 240, 256, 262, 270, 278, 282]) {
+      tries++
+      const got = lastLeg(driftAt, dashAt)
+      if (got.ok) {
+        wins++
+        if (!best || got.margin > best.margin) best = got
+      }
+    }
+  }
+  record(
+    wins === 15,
+    `the same ${wins} of ${tries} ride-and-steer lines still land with the bat in the room`,
+  )
+  record(
+    best !== null && best.margin > 48,
+    `and the best still clears the edge by ${best ? best.margin.toFixed(0) : 'n/a'}px, exactly as before`,
+  )
+  record(
+    best !== null && best.hits === 0,
+    `taking ${best ? best.hits : '?'} hits on that leg: the bat hangs over the crossing, not over fan B`,
+  )
+}
+
+// --- the bat's dive bends in the real fan columns ---
+{
+  const t = room(72, -2)
+  const bat = t.level.entities.byId('bat2')
+  let f = 0
+  while (bat.phase() !== 'dive' && f++ < 60 * 10) t.step()
+  record(bat.phase() === 'dive', 'riding fan A wakes the bat and it dives')
+
+  let lowest = 0
+  let lift = false
+  f = 0
+  while (bat.phase() === 'dive' && f++ < 60 * 10) {
+    t.step()
+    const at = bat.at()
+    lowest = M.max(lowest, PIT - at[1] === 0 ? 0 : at[1])
+    if (t.level.liftAt(bat.hurtBox())) lift = true
+  }
+  record(
+    lift,
+    'its dive passes through a fan column, where the draught pushes it up',
+  )
 }
 
 // =====================================================================

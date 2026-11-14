@@ -67,8 +67,12 @@ function arena(extraSolids = [], extraEntities = []) {
   }
 }
 
-/** The level, a player standing at `tileX`, and a step function. */
-function run(data, tileX, h = 0) {
+/**
+ * The level, a player standing at `tileX`, and a step function. `held` is
+ * applied before the first step, so a test can start the player already
+ * folded rather than giving the bat a frame to notice them standing.
+ */
+function run(data, tileX, h = 0, held = {}) {
   const level = new Level(data)
   const r = recorder()
   const p = new Player(
@@ -81,6 +85,7 @@ function run(data, tileX, h = 0) {
     dir: 0, jumpPressed: false, jumpReleased: false, jumpHeld: false,
     dashPressed: false, flatHeld: false, swordPressed: false,
     slashPressed: false, resetPressed: false,
+    ...held,
   }
   // What GameScene does: ask the level whether anything hit us, and hurt the
   // player if so. Four lines, so the test exercises the real damage path.
@@ -135,14 +140,14 @@ const until = (t, want, cap = 60 * 20) => {
 
   // Player underneath: the whole cycle.
   const t = run(arena(), 20)
-  record(t.bat.phase() === 'hang', 'standing under it, still hanging on frame one')
-
-  const toAlert = until(t, 'alert')
-  record(toAlert <= 2, `it alerts at once (${toAlert} frames)`)
+  record(t.bat.phase() === 'alert', 'standing under it, it alerts on the first frame')
   record(t.log.sounds.includes('sting'), 'playing the two-note sting')
+  // The tag is raised from inside the alert state, so it appears on the
+  // frame after the one that entered it.
+  t.step()
   record(
     t.log.labels.some((l) => l.text === '!'),
-    'and popping a "!" tag',
+    'and popping a "!" tag above itself',
   )
 
   let alertFrames = 0
@@ -215,21 +220,31 @@ const until = (t, want, cap = 60 * 20) => {
     `${BAT_RANGE_X + 1} tiles away it does not`,
   )
 
-  // Vertically: the bat hangs at h7.5, so standing on the floor is 7.5
-  // tiles below it - already outside the 6-tile reach.
+  // Vertically. The reach is measured between the boxes, which is what
+  // makes the spec's h7.5 anchor and its 6-tile reach agree: centre to
+  // centre a player on the floor is 6.5 tiles away and could never be
+  // attacked from the bat's own anchor.
   const low = run(arena(), 20)
-  const dy = M.abs(low.bat.at()[1] - low.p.y) / TILE
+  const centres = M.abs(low.bat.at()[1] - low.p.y) / TILE
+  // The gap proper: the bat's underside to the top of the player's head.
+  const gap = (low.p.y - low.p.halfH() - low.bat.hurtBox().bottom) / TILE
   record(
-    dy > BAT_RANGE_Y,
-    `the floor is ${dy.toFixed(1)} tiles below the bat, past its ${BAT_RANGE_Y}-tile reach...`,
+    centres > BAT_RANGE_Y && gap < BAT_RANGE_Y,
+    `a player on the floor is ${centres.toFixed(1)} tiles below the bat centre to centre - outside its ${BAT_RANGE_Y}-tile reach - but ${gap.toFixed(1)} box to box`,
   )
-  // ...but the range is measured from the player's centre, and the box is
-  // generous enough that standing underneath still trips it. Record what is
-  // actually true rather than what I assumed.
   for (let f = 0; f < 10; f++) low.step()
   record(
-    low.bat.phase() === 'alert' || low.bat.phase() === 'hang',
-    `and from the floor it ${low.bat.phase() === 'hang' ? 'ignores' : 'still sees'} the player`,
+    low.bat.phase() !== 'hang',
+    `so standing under it does wake it (${low.bat.phase()})`,
+  )
+
+  // And a player far enough below genuinely is out of reach: drop the
+  // player 7 tiles under the bat's box and it stays put.
+  const deep = run(arena([{ x: 26, w: 6, h: -7 }]), 29, -7)
+  for (let f = 0; f < 90; f++) deep.step()
+  record(
+    deep.bat.phase() === 'hang',
+    `${BAT_RANGE_Y + 1} tiles below, it ignores them`,
   )
 }
 
@@ -237,16 +252,22 @@ const until = (t, want, cap = 60 * 20) => {
 //  Hiding: flat under a slab is ignored, flat in the open is not.
 // =====================================================================
 {
-  // A slab right above the player, two tiles left of the bat: a slit's
-  // pillar is exactly this shape.
-  const roof = [{ x: 18, w: 2, h: 8, bottomH: 0.45 }]
-  const t = run(arena(roof), 18.5)
-  t.input.flatHeld = true
-  for (let f = 0; f < 120; f++) t.step()
-  record(t.p.isFlat(), 'folded flat under a slab')
+  // A platform under the bat, so a flat player is still within its reach —
+  // folding on the floor takes 30px off your height and puts you outside it
+  // anyway, which would prove nothing about the hiding rule.
+  const floor = [{ x: 16, w: 10, h: 3 }]
+  // A slab over part of that platform: a slit's pillar is exactly this
+  // shape. Its underside is 48px up, so a standing player fits under it too,
+  // which is what lets one spot test both halves of the rule.
+  const roof = [...floor, { x: 18, w: 2, h: 4.5, bottomH: 4 }]
+
+  // Flat from the first frame, so the bat never sees them standing.
+  const t = run(arena(roof), 18.5, 3, { flatHeld: true })
+  for (let f = 0; f < 180; f++) t.step()
+  record(t.p.isFlat(), 'folded flat under a slab, within reach')
   record(
     t.bat.phase() === 'hang',
-    'the bat ignores a player hiding under it, however long they wait',
+    `the bat ignores a player hiding under it, however long they wait (${t.bat.phase()})`,
   )
   record(t.hits() === 0, 'and never touches them')
 
@@ -259,11 +280,11 @@ const until = (t, want, cap = 60 * 20) => {
   )
 
   // Flat in the open is NOT hiding - the half of the rule that could
-  // silently never fire.
-  const open = run(arena(), 20)
-  open.input.flatHeld = true
-  for (let f = 0; f < 120; f++) open.step()
-  record(open.p.isFlat(), 'folded flat in the open')
+  // silently never fire, and the one that makes it a hiding rule rather
+  // than a folding rule.
+  const open = run(arena(floor), 22, 3, { flatHeld: true })
+  for (let f = 0; f < 60; f++) open.step()
+  record(open.p.isFlat(), 'folded flat in the open, at the same height')
   record(
     open.bat.phase() !== 'hang',
     `is still fair game (${open.bat.phase()})`,
@@ -404,7 +425,8 @@ const until = (t, want, cap = 60 * 20) => {
   const k = run(arena(), 20)
   until(k, 'dive')
   const x0 = k.p.x
-  while (k.hits() === 0) k.step()
+  let guard = 0
+  while (k.hits() === 0 && guard++ < 60 * 10) k.step()
   record(
     M.abs(k.p.vx) === HURT_KNOCK_X,
     `the hit throws the player at ${M.abs(k.p.vx)}px/s`,
@@ -419,6 +441,14 @@ const until = (t, want, cap = 60 * 20) => {
 {
   const t = run(arena(), 20)
   record(t.bat.alive() && t.bat.hits() === 1, 'one health')
+  // done() is what the "watch its wings" tag waits on: seen the telegraph.
+  record(t.bat.done(), 'and it reports itself seen, having just alerted')
+  const unseen = run(arena(), 2)
+  for (let f = 0; f < 60; f++) unseen.step()
+  record(
+    !unseen.bat.done(),
+    'while one that has never alerted does not',
+  )
   record(t.bat.hurtBox() !== null, 'and a box the sword can find')
 
   const survived = t.bat.hurt(1)

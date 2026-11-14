@@ -79,6 +79,8 @@ export class Bat extends Enemy<BatState> {
 
   /** Did it catch the player on this dive? If so it is not stunned. */
   private struck = false
+  /** Has it ever telegraphed? What "watch its wings" is waiting to see. */
+  private seen = false
   /** Where a return started from. */
   private fromX = 0
   private fromY = 0
@@ -105,6 +107,14 @@ export class Bat extends Enemy<BatState> {
   /** Where it is, for the tests and for anything that wants to look. */
   at(): Point {
     return [this.px, this.py]
+  }
+
+  /**
+   * Has the player been shown the telegraph? That is the whole lesson of
+   * the "watch its wings" tag, so this is what clears it.
+   */
+  done(): boolean {
+    return this.seen
   }
 
   /** The locked dive target. Null until a dive has been aimed. */
@@ -140,6 +150,7 @@ export class Bat extends Enemy<BatState> {
       case 'hang':
         if (this.cooldown <= 0 && this.sees(world)) {
           this.enter('alert')
+          this.seen = true
           world.fx.sound('sting')
         }
         break
@@ -182,10 +193,17 @@ export class Bat extends Enemy<BatState> {
    */
   private sees(world: EntityWorld): boolean {
     const p = world.player.box
-    const cx = (p.left + p.right) / 2
-    const cy = (p.top + p.bottom) / 2
-    if (Math.abs(cx - this.px) > BAT_RANGE_X * TILE) return false
-    if (Math.abs(cy - this.py) > BAT_RANGE_Y * TILE) return false
+    const me = this.box()
+    // The gap between the two boxes, not between their centres. Measured
+    // centre to centre, the spec's own numbers contradict each other: a bat
+    // on the spec's h7.5 anchor sits 6.5 tiles above a player standing on
+    // the floor underneath it, which is outside the spec's 6-tile reach, so
+    // it could never attack anyone standing below it. Edge to edge that same
+    // player is 5.5 tiles away and the two numbers agree.
+    const gapX = Math.max(0, me.left - p.right, p.left - me.right)
+    const gapY = Math.max(0, me.top - p.bottom, p.top - me.bottom)
+    if (gapX > BAT_RANGE_X * TILE) return false
+    if (gapY > BAT_RANGE_Y * TILE) return false
     // "A player who is flat inside a slit is ignored, so nobody gets
     // attacked while stuck." Read as geometry rather than as a reference to
     // Slit: flat, with something solid just overhead. Flat in the open is
@@ -316,6 +334,7 @@ export class Bat extends Enemy<BatState> {
     this.windVy = 0
     this.windY = 0
     this.struck = false
+    this.seen = false
   }
 
   draw(g: Phaser.GameObjects.Graphics): void {

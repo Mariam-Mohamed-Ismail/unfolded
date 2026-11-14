@@ -641,7 +641,8 @@ export const COLOR_BAT_EAR = 0xe88a8a
 export const SFX_STING_NOTES = [880, 660]
 export const SFX_STING_NOTE_MS = 110
 export const SFX_STING_STEP_MS = 120
-export const SFX_STING_GAIN = 1
+// Solved by tests/calibrate.mjs to -26 dBFS: a placeholder 1 was 4.9dB hot.
+export const SFX_STING_GAIN = 0.57
 
 // The thud: one oscillator dropping in pitch, the shape the pickup arpeggio
 // uses. The gain is solved by tests/calibrate.mjs, not chosen.

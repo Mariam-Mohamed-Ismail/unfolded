@@ -9,7 +9,9 @@ import { Slit } from '../src/game/entities/Slit.ts'
 import { level1 } from '../src/game/levels/level1.ts'
 import { level2 } from '../src/game/levels/level2.ts'
 import {
+  BAT_COVER_PX,
   BAT_H,
+  BAT_RANGE_Y,
   FLAT_MAX_SPEED,
   PARTICLES_SEAL,
   PLAYER_FLAT_H,
@@ -43,8 +45,13 @@ function recorder() {
   }
 }
 
-/** Level 2 with the player at `tileX`, and the blade out unless told not. */
-function room(tileX, armed = true) {
+/**
+ * Level 2 with the player at `tileX`, and the blade out unless told not.
+ * `held` is applied before the first step, so a test can start the player
+ * already folded — which matters anywhere they begin inside the slit, where
+ * standing for even one frame pops them out on top of the pillar.
+ */
+function room(tileX, armed = true, held = {}) {
   const level = new Level(level2)
   const r = recorder()
   const p = new Player(
@@ -57,16 +64,25 @@ function room(tileX, armed = true) {
   const input = {
     dir: 0, jumpPressed: false, jumpReleased: false, jumpHeld: false,
     dashPressed: false, flatHeld: false,
+    ...held,
   }
   let slash = false
   // Level 2's sword is a temporary pickup at the spawn; these tests start
   // the player mid-room, so the blade's presence is faked at the one place
   // anything asks about it.
   level.swordOut = () => armed
+  // Damage wired the way GameScene wires it, so the bat is as dangerous
+  // here as it is in the game.
+  let hurt = 0
   const step = () => {
     p.update(DT, input, level.solids, level.updraftAt(p), sword.speedScale())
     level.update(DT, p, r.fx)
     sword.update(DT, p, slash, level, r.fx)
+    const from = level.dangerAt(level.boxOf(p))
+    if (from !== null) {
+      hurt++
+      p.hurt(M.sign(p.x - from) || 1)
+    }
     input.jumpPressed = false
     input.jumpReleased = false
     input.dashPressed = false
@@ -76,6 +92,7 @@ function room(tileX, armed = true) {
   return {
     level, p, input, sword, step, log: r.log,
     swing: () => { slash = true },
+    hits: () => hurt,
   }
 }
 
@@ -427,6 +444,115 @@ const foot = (p) => p.y + p.halfH()
     l1.entities.byId('tipFlat') !== undefined,
     'and its prompt tags are all still there',
   )
+}
+
+// =====================================================================
+//  Step L2-8b: the bat is quiet while you are in the slit.
+// =====================================================================
+{
+  const slit = base.entities.byId('slit2b')
+  const bat = base.entities.byId('bat1')
+
+  // Flat from the first frame, so the bat never gets a frame of them
+  // standing — and so the player never pops out on top of the pillar.
+  const t = room(38, true, { flatHeld: true })
+  let woke = null
+  for (let f = 0; f < 60 * 10; f++) {
+    t.step()
+    if (bat === null) break
+    const phase = t.level.entities.byId('bat1').phase()
+    if (phase !== 'hang' && woke === null) woke = f
+  }
+  record(t.p.isFlat(), 'folded flat inside the slit')
+  record(
+    t.level.entities.byId('bat1').phase() === 'hang',
+    `the bat stays hanging for ten seconds${woke === null ? '' : ` (woke at frame ${woke})`}`,
+  )
+  record(t.hits() === 0, 'and never touches the player')
+
+  // Which of the two rules is doing the work? Both apply here, and it is
+  // worth knowing that the range alone would be enough - so the hiding rule
+  // is not what is load-bearing at floor level.
+  const box = t.level.boxOf(t.p)
+  const bbox = t.level.entities.byId('bat1').hurtBox()
+  const gapY = (box.top - bbox.bottom) / TILE
+  record(
+    gapY > BAT_RANGE_Y,
+    `flat on the floor the player is ${gapY.toFixed(1)} tiles under the bat, past its ${BAT_RANGE_Y}-tile reach on its own`,
+  )
+  const pillar = base.solids.find(
+    (s) => s.x === slit.x && s.y + s.h < base.surfaceY(0),
+  )
+  record(
+    !!pillar && box.top - (pillar.y + pillar.h) <= BAT_COVER_PX,
+    `and is also covered, with the pillar ${pillar ? (box.top - (pillar.y + pillar.h)).toFixed(0) : '?'}px overhead`,
+  )
+
+  // Standing in the arena, by contrast, does wake it.
+  const open = room(45)
+  for (let f = 0; f < 60; f++) open.step()
+  record(
+    open.level.entities.byId('bat1').phase() !== 'hang',
+    `standing in the arena wakes it (${open.level.entities.byId('bat1').phase()})`,
+  )
+}
+
+// --- 2B is still beatable with the bat live ---
+{
+  // Through the slit, across the arena, cut the seal, out. The same route
+  // the rest of this suite proves, run end to end with damage wired.
+  const t = room(34)
+  let cut = false
+  let frames = 0
+  for (; frames < 60 * 30; frames++) {
+    const x = t.p.x / TILE
+    // Flat through the pillar, upright after it.
+    t.input.flatHeld = x > 35 && x < 42.6
+    t.input.dir = 1
+    // Swing at the seal once in reach.
+    if (x > 48.4 && !cut) {
+      t.swing()
+      cut = true
+    }
+    t.step()
+    if (t.p.x / TILE > 52) break
+  }
+  record(
+    t.p.x / TILE > 52,
+    `the route through 2B still works with the bat live, in ${(frames / 60).toFixed(1)}s`,
+  )
+  record(
+    t.hits() < 3,
+    `costing ${t.hits()} of the player's 3 hits`,
+  )
+  const seal = t.level.entities.byId('seal1')
+  record(seal.hurtBox() === null, 'with the seal cut on the way past')
+}
+
+// --- the "watch its wings" tag ---
+{
+  const t = room(43)
+  const tag = t.level.entities.byId('tipBat')
+  record(!!tag, 'the tag is in 2B')
+  record(tag.tx === 43, `at x${tag.tx}`)
+  const words = tag.serialize().state.text
+  record(words === 'watch its wings', `reading "${words}"`)
+  record(base.roomAt(tag.centerX()).id === '2b', 'inside room 2B')
+
+  // It clears when the bat has telegraphed, and not before.
+  const fresh = new Level(level2)
+  record(
+    !fresh.entities.byId('tipBat').done(),
+    'uncleared while the bat has never alerted',
+  )
+  let f = 0
+  while (t.level.entities.byId('bat1').phase() === 'hang' && f++ < 60 * 5) t.step()
+  record(
+    t.level.entities.byId('bat1').done(),
+    'the bat reports itself seen once it has alerted',
+  )
+  t.step()
+  record(tag.done(), 'which clears the tag')
 }
 
 const nl = String.fromCharCode(10)

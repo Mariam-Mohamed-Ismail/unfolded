@@ -127,6 +127,9 @@ for (const [name, a, b, ms, q, targetDb, current] of VOICES) {
 /** The tone voices, solved the same way. */
 const TONES = [
   ['THUD', C.SFX_THUD_FROM_HZ, C.SFX_THUD_TO_HZ, C.SFX_THUD_MS, 'triangle', -26, C.SFX_THUD_GAIN],
+  // The sting's two notes are the same shape at two pitches, so solving the
+  // lower one (which carries more energy through the envelope) sets both.
+  ['STING', C.SFX_STING_NOTES[1], C.SFX_STING_NOTES[1], C.SFX_STING_NOTE_MS, 'sine', -26, C.SFX_STING_GAIN],
 ]
 
 for (const [name, a, b, ms, shape, targetDb, current] of TONES) {

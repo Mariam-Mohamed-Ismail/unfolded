@@ -62,6 +62,11 @@ export const level2: LevelData = {
     // The bat's ceiling strip over 2B's arena, tiles 44 to 47. A thin slab:
     // it is something to hang from, not something to stand on.
     { x: 44, w: 3, h: 8, bottomH: 7.75 },
+    // 2C's strip, tiles 73 to 77, over the air between the two fans. Its
+    // underside is at h8, which is 320px above the pit floor - and the top
+    // of a fan A ride puts the player's head at 314px. See room2c-check:
+    // that clearance is measured, not assumed.
+    { x: 73, w: 4, h: 8.25, bottomH: 8 },
   ],
 
   entities: [
@@ -98,6 +103,9 @@ export const level2: LevelData = {
     // would invalidate that proof - it belongs with the room, not here.
     { id: 'slit2b', type: 'Slit', x: 36, w: 6, topH: 7, clearancePx: 14 },
     { id: 'bat1', type: 'Bat', x: 45, w: 1, h: 7.5 },
+    // Cleared by seeing the telegraph once, which is the whole lesson.
+    { id: 'tipBat', type: 'PromptTag', x: 43, w: 2, h: 0,
+      text: 'watch its wings', action: 'target', targets: ['bat1'] },
     { id: 'seal1', type: 'Seal', x: 50, floorH: 0, topH: 8 },
     // These two share a zone on purpose: the second is gated on the first,
     // so only one is ever up.
@@ -111,12 +119,13 @@ export const level2: LevelData = {
     //
     // A is on from 0s for 3.4s, B from 3s for 3.4s, both on a 6s period, so
     // they overlap for 0.4s twice a period - that overlap is the crossing
-    // window. The bat hangs from a ceiling strip at x 73-77, anchor h 8, in
-    // the middle of the pit; nothing is placed there yet.
+    // window. The bat hangs from the strip at x 73-77, over that crossing,
+    // so riding fan A to the top wakes it.
     { id: 'fanA', type: 'Fan', x: 71, w: 2, floorH: -2, columnH: 8,
       onStart: 0, onDuration: 3.4, period: 6 },
     { id: 'fanB', type: 'Fan', x: 78, w: 2, floorH: -2, columnH: 8,
       onStart: 3, onDuration: 3.4, period: 6 },
+    { id: 'bat2', type: 'Bat', x: 73, w: 4, h: 8 },
     { id: 'exit2', type: 'ExitDoor', x: 94, h: 4 },
     { id: 'tipFans', type: 'PromptTag', x: 63, w: 4, h: 0,
       text: 'fans take turns', action: 'target', targets: ['fanA'] },
