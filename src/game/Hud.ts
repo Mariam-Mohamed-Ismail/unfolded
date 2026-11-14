@@ -1,8 +1,12 @@
 import * as Phaser from 'phaser'
 import type { Health } from './Health.ts'
+import { crease } from './Upgrades.ts'
 import {
+  COLOR_FOLD,
   COLOR_HURT,
   COLOR_INK,
+  CREASE_ICON_DY,
+  CREASE_ICON_PX,
   GAME_WIDTH,
   HEALTH_MAX,
   HEALTH_PIP_DY,
@@ -81,6 +85,32 @@ export class Hud {
       // Gone, but the slot stays so three is still the number you count to.
       this.gfx.lineStyle(HEALTH_PIP_LINE, COLOR_INK, 0.3)
       pip(this.gfx, x, y, r, false)
+    }
+
+    this.drawCrease(y + r + CREASE_ICON_DY)
+  }
+
+  /**
+   * The crease, under the health: a folded wing for the glider, a blade for
+   * the keen edge. Drawn rather than written, like everything else here.
+   */
+  private drawCrease(y: number): void {
+    const which = crease()
+    if (which === 'none') return
+    const r = CREASE_ICON_PX
+    const x = HUD_PAD + r
+
+    this.gfx.fillStyle(COLOR_FOLD, 0.9)
+    this.gfx.lineStyle(HEALTH_PIP_LINE, COLOR_INK, 0.8)
+    if (which === 'glider') {
+      // One sheet creased down the middle.
+      this.gfx.fillTriangle(x - r, y + r, x + r, y - r, x + r, y + r)
+      this.gfx.strokeTriangle(x - r, y + r, x + r, y - r, x + r, y + r)
+      this.gfx.lineBetween(x + r, y - r, x, y + r)
+    } else {
+      // A long thin blade.
+      this.gfx.fillTriangle(x - r, y + r, x + r, y - r, x + r * 0.2, y + r)
+      this.gfx.strokeTriangle(x - r, y + r, x + r, y - r, x + r * 0.2, y + r)
     }
   }
 

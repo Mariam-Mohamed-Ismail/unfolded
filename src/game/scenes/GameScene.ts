@@ -64,9 +64,10 @@ export class GameScene extends Phaser.Scene {
 
   /** What the menu started us with. */
   private start: GameStart = {}
-  /** Seconds since this run began, and how many resets it took. */
+  /** Seconds since this run began, how many resets, and how many hits. */
   private elapsed = 0
   private resets = 0
+  private hitsTaken = 0
   /** The same two numbers for the room the player is in right now. */
   private roomId: string | null = null
   private roomTime = 0
@@ -96,6 +97,7 @@ export class GameScene extends Phaser.Scene {
     this.start = data ?? {}
     this.elapsed = 0
     this.resets = 0
+    this.hitsTaken = 0
     this.roomId = null
     this.roomTime = 0
     this.roomResets = 0
@@ -170,6 +172,11 @@ export class GameScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       this.game.events.off('game:restartRoomNow', onRestart)
     })
+
+    // Phaser clears this scene's keys when it pauses, so on the way back the
+    // held flags have to be re-seeded or Input reports releases that never
+    // happened — which would cut a jump held across a pause.
+    this.events.on(Phaser.Scenes.Events.RESUME, () => this.controls.resync())
   }
 
   /**
@@ -285,6 +292,12 @@ export class GameScene extends Phaser.Scene {
       this.game.events.emit('level:finished', {
         time: this.elapsed,
         resets: this.resets,
+        // Which level ended, so the flow knows whether there is another.
+        level: this.start.level ?? 0,
+        // Only where damage is possible. Left off for Level 1 so its screen
+        // reads exactly as it always has rather than claiming a perfect run
+        // nothing could have spoiled.
+        hits: this.hazards ? this.hitsTaken : undefined,
       })
     }
   }
@@ -343,6 +356,9 @@ export class GameScene extends Phaser.Scene {
     // Health owns the rule: already dead, or still inside the second of
     // invulnerability, and this is not a hit at all.
     if (!this.health.take()) return
+    // Counted here, on the one branch that decides a hit landed, so the
+    // number on the complete screen cannot drift from the health bar.
+    this.hitsTaken++
 
     if (this.health.dead()) {
       this.hurtFeedback()

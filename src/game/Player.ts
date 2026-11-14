@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import type { Input } from './Input.ts'
 import { PlayerView } from './PlayerView.ts'
+import { hasGlider } from './Upgrades.ts'
 import {
   ACCEL,
   AIR_ACCEL,
@@ -14,6 +15,7 @@ import {
   FLAT_FRICTION,
   FLAT_MAX_SPEED,
   FOLD_TIME_MS,
+  GLIDE_FALL_SPEED,
   DASH_COOLDOWN,
   DASH_FREEZE,
   DASH_SPEED,
@@ -124,6 +126,8 @@ export class Player {
    * carry on as normal.
    */
   private knockHold = 0
+  /** Drifting down on the glider fold, which the view draws a wing for. */
+  private gliding = false
 
   // Set during update, read by the scene afterwards, cleared next frame.
   // Keeps effects out of the controller without it knowing they exist.
@@ -233,6 +237,11 @@ export class Player {
     return this.flat
   }
 
+  /** Drifting down on the glider fold. The view draws a wing for it. */
+  isGliding(): boolean {
+    return this.gliding
+  }
+
   /** Where the feet are. The view is drawn and scaled from this point. */
   footY(): number {
     return this.y + this.halfH()
@@ -257,6 +266,7 @@ export class Player {
     this.dashTail = 0
     this.dashDir = 1
     this.knockHold = 0
+    this.gliding = false
     this.landHold = 0
     this.apexY = y
     this.fallDrop = 0
@@ -338,7 +348,7 @@ export class Player {
       this.runX(dt, input.dir, speedScale)
     }
     this.jump(dt)
-    this.gravity(dt, lift)
+    this.gravity(dt, lift, input.jumpHeld)
 
     this.moveX(this.vx * dt, solids)
     this.moveY(this.vy * dt, solids)
@@ -552,7 +562,11 @@ export class Player {
     }
   }
 
-  private gravity(dt: number, lift: Updraft | null = null): void {
+  private gravity(
+    dt: number,
+    lift: Updraft | null = null,
+    jumpHeld = false,
+  ): void {
     if (lift) {
       // Moving air replaces gravity rather than fighting it: vertical speed
       // is driven toward the draught's own speed and held there.
@@ -565,6 +579,13 @@ export class Player {
     // Heavier on the way down, which is what makes the arc feel snappy.
     const g = this.vy > 0 ? GRAVITY * FALL_GRAVITY_MULT : GRAVITY
     this.vy = Math.min(this.vy + g * dt, MAX_FALL_SPEED)
+
+    // The glider fold: holding jump on the way down caps the fall. Only on
+    // the way down, so it never slows a rise, and never while flat — a
+    // folded sheet has no wings out.
+    this.gliding =
+      hasGlider() && jumpHeld && this.vy > 0 && !this.flat && !this.grounded
+    if (this.gliding) this.vy = Math.min(this.vy, GLIDE_FALL_SPEED)
   }
 
   // --- form ---

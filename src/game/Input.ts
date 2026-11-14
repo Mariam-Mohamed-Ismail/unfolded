@@ -140,6 +140,34 @@ export class Input {
     ]
   }
 
+  /**
+   * Re-seed the held flags from the keyboard without reporting any edges.
+   *
+   * Call this after a resume. Phaser resets a scene's keys when it pauses
+   * (KeyboardPlugin listens for SceneEvents.PAUSE), so on the first frame
+   * back every key reads up — and since the edges here are derived by
+   * comparing against this object's own previous frame, a jump key that was
+   * held before the pause would be reported as *released*, cutting a jump
+   * that is still in the air. Seeding first means held matches the keyboard
+   * and no edge is invented.
+   */
+  resync(): void {
+    this.jumpHeld = anyDown(this.jumpKeys)
+    this.dashHeld = anyDown(this.dashKeys)
+    this.muteHeld = anyDown(this.muteKeys)
+    this.debugHeld = anyDown(this.debugKeys)
+    this.resetHeld = anyDown(this.resetKeys)
+    this.swordHeld = anyDown(this.swordKeys)
+    this.slashHeld = anyDown(this.slashKeys) || this.pointer.leftButtonDown()
+    this.pauseHeld = anyDown(this.pauseKeys)
+    this.recordHeld = anyDown(this.recordKeys)
+    this.replayHeld = anyDown(this.replayKeys)
+    this.hurtHeld = anyDown(this.hurtKeys)
+    for (let i = 0; i < this.panelKeys.length; i++) {
+      this.panelHeld[i] = anyDown(this.panelKeys[i])
+    }
+  }
+
   /** Call once per frame, before anything reads this. */
   update(): void {
     const left = anyDown(this.leftKeys)

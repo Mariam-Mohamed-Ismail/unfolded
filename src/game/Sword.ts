@@ -1,5 +1,6 @@
 import type * as Phaser from 'phaser'
 import { rotAbout } from './geom.ts'
+import { hasKeen } from './Upgrades.ts'
 import type { Box, Fx } from './entities/Entity.ts'
 import type { Level } from './Level.ts'
 import type { Player } from './Player.ts'
@@ -15,6 +16,7 @@ import {
   SLASH_BOX_H,
   SLASH_BOX_W,
   SLASH_HITSTOP_MS,
+  SLASH_KEEN_W,
   SLASH_RECOVER_MS,
   SLASH_SHAKE,
   SLASH_SHAKE_MS,
@@ -201,11 +203,21 @@ export class Sword {
   }
 
   /** The hit area: in front of the player, facing-flipped. */
+  /**
+   * How far the swing reaches. The keen edge is this one number: everything
+   * the spec says it does — the wider hit area, the longer blade, cutting
+   * seals from 2.5 tiles — falls out of it, because 80px is 2.5 tiles.
+   */
+  reach(): number {
+    return hasKeen() ? SLASH_KEEN_W : SLASH_BOX_W
+  }
+
   private box(player: Player): Box {
-    const front = player.x + (this.dir > 0 ? 0 : -SLASH_BOX_W)
+    const w = this.reach()
+    const front = player.x + (this.dir > 0 ? 0 : -w)
     return {
       left: front,
-      right: front + SLASH_BOX_W,
+      right: front + w,
       top: player.y - SLASH_BOX_H / 2,
       bottom: player.y + SLASH_BOX_H / 2,
     }
@@ -216,7 +228,9 @@ export class Sword {
     const swept =
       this.phase === 'idle' ? 0 : -SLASH_ARC / 2 + SLASH_ARC * this.progress()
     const o: Point = [player.x, player.y]
-    const reach = SWORD_LEN * this.dir
+    // The drawn blade grows with the hit area, so a keen edge looks as long
+    // as it reaches rather than cutting things it visibly misses.
+    const reach = SWORD_LEN * (this.reach() / SLASH_BOX_W) * this.dir
     const half = SWORD_W / 2
     return [
       [o[0] + reach, o[1]],

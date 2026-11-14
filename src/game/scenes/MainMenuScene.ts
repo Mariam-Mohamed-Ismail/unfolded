@@ -120,7 +120,7 @@ export class MainMenuScene extends Phaser.Scene {
             // the page being rebuilt.
             label: () => roomLabel(choice.name, records?.get(choice.room)),
             choose: () =>
-              flow.go('Game', { level: choice.level, roomId: choice.room }),
+              flow.startGame({ level: choice.level, roomId: choice.room }),
           })
         }
       }
@@ -133,7 +133,7 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     return [
-      { label: () => 'Play', choose: () => flow.go('Game', {}) },
+      { label: () => 'Play', choose: () => flow.startGame({}) },
       { label: () => 'Room select', choose: () => this.show('rooms') },
       { label: () => 'Controls', choose: () => this.show('controls') },
       {

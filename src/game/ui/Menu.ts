@@ -1,5 +1,9 @@
 import * as Phaser from 'phaser'
 import {
+  CARD_FONT_PX,
+  CARD_GAP,
+  CARD_H,
+  CARD_W,
   COLOR_FOLD,
   COLOR_INK,
   COLOR_PAPER,
@@ -47,6 +51,8 @@ export class Menu {
   private top: number
   private index = 0
   private compact = false
+  /** Side by side instead of stacked: the crease cards. */
+  private row = false
 
   private up: Phaser.Input.Keyboard.Key[] = []
   private down: Phaser.Input.Keyboard.Key[] = []
@@ -72,8 +78,10 @@ export class Menu {
 
     const kb = scene.input.keyboard
     if (kb) {
-      this.up = [kb.addKey('UP')]
-      this.down = [kb.addKey('DOWN')]
+      // Left and right move the same cursor, so a row of cards needs no
+      // second key handler — and no second copy of the arming below.
+      this.up = [kb.addKey('UP'), kb.addKey('LEFT')]
+      this.down = [kb.addKey('DOWN'), kb.addKey('RIGHT')]
       kb.on('keyup-ENTER', () => {
         this.enterArmed = true
       })
@@ -97,7 +105,19 @@ export class Menu {
     this.compact = compact
   }
 
-  /** Replaces the whole list, which is how the menu changes page. */
+  /**
+   * Lay the items out side by side as cards rather than stacked as buttons.
+   * Everything else is unchanged — the same paper quad, the same pointer
+   * test, and above all the same Enter arming.
+   */
+  setRow(row: boolean): void {
+    this.row = row
+  }
+
+  /**
+   * Replaces the whole list, which is how the menu changes page. Call
+   * setRow() before this: the text size is fixed when the labels are made.
+   */
   setItems(items: MenuItem[]): void {
     this.items = items
     // Never start on a heading.
@@ -108,8 +128,9 @@ export class Menu {
       this.scene.add
         .text(0, 0, '', {
           fontFamily: 'monospace',
-          fontSize: `${MENU_FONT_PX}px`,
+          fontSize: `${this.row ? CARD_FONT_PX : MENU_FONT_PX}px`,
           color: INK,
+          align: 'center',
         })
         .setOrigin(0.5, 0.5)
         .setDepth(10),
@@ -177,6 +198,18 @@ export class Menu {
    * a button.
    */
   private box(i: number): { x: number; y: number; w: number; h: number } {
+    if (this.row) {
+      // Centred as a group, so two cards sit either side of the middle.
+      const n = Math.max(1, this.items.length)
+      const span = n * CARD_W + (n - 1) * CARD_GAP
+      const left = (GAME_WIDTH - span) / 2
+      return {
+        x: left + i * (CARD_W + CARD_GAP),
+        y: this.top,
+        w: CARD_W,
+        h: CARD_H,
+      }
+    }
     let y = this.top
     for (let k = 0; k < i; k++) y += this.rowH(k) + this.gap()
     return { x: (GAME_WIDTH - MENU_W) / 2, y, w: MENU_W, h: this.rowH(i) }

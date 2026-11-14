@@ -6,9 +6,11 @@ import {
   AFTERIMAGE_ALPHA,
   AFTERIMAGE_EVERY_MS,
   AFTERIMAGE_FADE_MS,
+  COLOR_PAPER,
   COLOR_PLAYER,
   COLOR_PLAYER_LINE,
   DASH_STRETCH_X,
+  GLIDE_WING_PX,
   DASH_STRETCH_Y,
   FALL_LEG_TRAIL_DEG,
   FALL_STRETCH_X,
@@ -131,6 +133,34 @@ export class PlayerView {
     const tris = this.build(p, sx, sy)
     this.trackTrail(dt, p, tris)
     this.render(tris)
+    if (p.isGliding()) this.wing(p)
+  }
+
+  /**
+   * The glider fold: a small folded wing on the player's back, drawn behind
+   * nothing and after the figure, so it reads as something they are holding
+   * out rather than part of the body.
+   */
+  private wing(p: Player): void {
+    const back = p.x - p.facing * (p.halfW() - 1)
+    const top = p.y - p.halfH() * 0.3
+    const r = GLIDE_WING_PX
+    // Two facets, like one sheet creased down the middle.
+    this.gfx.fillStyle(COLOR_PAPER, 0.95)
+    this.gfx.lineStyle(PLAYER_OUTLINE, COLOR_PLAYER_LINE, 1)
+    for (const k of [0.55, 1]) {
+      const tri: Tri = [
+        [back, top],
+        [back - p.facing * r * k, top + r * 0.5 * k],
+        [back - p.facing * r * 0.3 * k, top + r * k],
+      ]
+      this.gfx.fillTriangle(
+        tri[0][0], tri[0][1], tri[1][0], tri[1][1], tri[2][0], tri[2][1],
+      )
+      this.gfx.strokeTriangle(
+        tri[0][0], tri[0][1], tri[1][0], tri[1][1], tri[2][0], tri[2][1],
+      )
+    }
   }
 
   // --- timers ---

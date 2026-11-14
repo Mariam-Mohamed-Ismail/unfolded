@@ -1,8 +1,18 @@
 import * as Phaser from 'phaser'
+import { LEVELS } from './levels/index.ts'
+import { chosenYet } from './Upgrades.ts'
 import { FADE_MS } from './constants.ts'
 
-/** What a finished level reports. */
-export type FinishedPayload = { time: number; resets: number }
+/**
+ * What a finished level reports. `level` says which one ended; `hits` is
+ * absent for a level that cannot hurt you.
+ */
+export type FinishedPayload = {
+  time: number
+  resets: number
+  level?: number
+  hits?: number
+}
 
 /** What the Game scene is started with. */
 export type GameStart = { level?: number; roomId?: string }
@@ -19,6 +29,8 @@ export class Flow {
   private game: Phaser.Game
   /** True between a fade starting and the scene swap happening. */
   private pending = false
+  /** The game start that is waiting on the crease cards, if any. */
+  private held: GameStart | null = null
 
   constructor(game: Phaser.Game) {
     this.game = game
@@ -71,8 +83,53 @@ export class Flow {
       const ops = this.ops('Pause')
       if (!ops) return
       this.audio()?.setPaused(false)
+      if (this.needsCrease(start)) {
+        this.held = start
+        ops.start('Crease')
+        return
+      }
       ops.start('Game', start)
     })
+  }
+
+  /**
+   * The one door into the game. Every caller comes through here, so the
+   * rule "a level with hazards needs a crease first" lives in one place
+   * rather than at each menu that can start a level.
+   */
+  startGame(start: GameStart = {}): void {
+    if (this.needsCrease(start)) {
+      this.held = start
+      this.go('Crease')
+      return
+    }
+    this.go('Game', start)
+  }
+
+  /**
+   * Run the start that was waiting on the cards. Called by CreaseScene once
+   * a crease has been picked.
+   */
+  resume(): void {
+    const start = this.held ?? {}
+    this.held = null
+    this.go('Game', start)
+  }
+
+  /**
+   * A level that can hurt you is a level the creases are for. Keyed off the
+   * level's own `hazards` flag rather than its index, the same flag the
+   * health pips use, so adding a level needs no change here.
+   */
+  private needsCrease(start: GameStart): boolean {
+    if (chosenYet()) return false
+    const data = LEVELS[start.level ?? 0]
+    return data?.hazards === true
+  }
+
+  /** Is there a level after this one? What "Continue" depends on. */
+  hasNext(level: number): boolean {
+    return level + 1 < LEVELS.length
   }
 
   /**

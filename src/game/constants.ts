@@ -631,6 +631,25 @@ export const PARTICLES_BAT = 12
 // from the shared prompt tag, so it matches every other tag in the game.
 export const BAT_TAG_DY = 26
 
+// --- Step L2-9: the creases ---
+// Glider fold: holding jump while falling caps the fall at this speed.
+export const GLIDE_FALL_SPEED = 120
+// The folded wing it draws on the player's back.
+export const GLIDE_WING_PX = 11
+// Keen edge: the hit area grows from SLASH_BOX_W to this, which is 2.5
+// tiles - the distance the spec says seals can then be cut from.
+export const SLASH_KEEN_W = 80
+
+// The two cards on the choice screen.
+export const CARD_W = 210
+export const CARD_H = 150
+export const CARD_GAP = 28
+export const CARD_TOP = 168
+export const CARD_FONT_PX = 13
+// The small crease icon under the health pips.
+export const CREASE_ICON_PX = 8
+export const CREASE_ICON_DY = 18
+
 // The spec's bat palette: slate body, darker wing facets, pink ears.
 export const COLOR_BAT_BODY = 0x5f7f8c
 export const COLOR_BAT_WING = 0x3f5865

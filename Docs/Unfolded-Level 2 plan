@@ -37,3 +37,10 @@ Step L2-8 – Enemy base and the bat
 Goal: an enemy that is easy to read and fair to dodge.
 Test: the alert is clear, the dive aims where you were at the end of the alert, dodging works every time, a missed dive leaves it stunned, one sword hit kills it, it ignores you while you are flat under the pillar, and fans bend its path.
 
+Phase 4 – Upgrades and wrap-up 
+Step L2-9 – Crease choice
+Goal: a choice that changes how the player plays, with no wrong answer.
+Test: the screen appears after Level 1, both options work, the choice is shown in the HUD, and every room can be finished with either one.
+
+Step L2-10 – Level complete and menus
+
