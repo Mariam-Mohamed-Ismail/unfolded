@@ -138,6 +138,22 @@ export type LevelData = {
    */
   hazards?: boolean
   /**
+   * How many crease choices must have been made before this level starts.
+   * Level 2 wants one, Level 3 wants two, and a level that leaves it out
+   * never asks — which is how the movement lane and Level 1 stay as they are.
+   *
+   * A number rather than a flag because the choices accumulate: starting
+   * Level 3 from Room select having made none owes the player two screens,
+   * and the gate firing again after each one is what delivers them.
+   */
+  creases?: number
+  /**
+   * True for the last level: its exit door plays the ending rather than
+   * going straight to a screen. Data like `hazards` and `creases`, so which
+   * level ends the game is decided where the levels are.
+   */
+  ending?: boolean
+  /**
    * How hard the camera follows vertically. Only a level tall enough to
    * scroll needs it; one that leaves it out follows on CAM_LERP as before,
    * which is how Levels 1 and 2 stay exactly as they are.

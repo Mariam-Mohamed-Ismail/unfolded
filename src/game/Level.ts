@@ -6,6 +6,7 @@ import { COLOR_SOLID, PLAYER_H, SOLID_OUTLINE, TILE } from './constants.ts'
 import type { EntityRegistry } from './entities/EntityRegistry.ts'
 import type { Box, Buttons, Entity, EntityWorld, Fx } from './entities/Entity.ts'
 import type { LevelData } from './levels/types.ts'
+import type { Point } from './geom.ts'
 import type { Solid, Updraft } from './Player.ts'
 
 /**
@@ -268,6 +269,20 @@ export class Level {
     for (const entity of room.entities) {
       const from = entity.dangerAt(box)
       if (from !== null) return from
+    }
+    return null
+  }
+
+  /**
+   * Turn back the first projectile in `box`, and say where. The sword's half
+   * of the Parry crease; the twin of dangerAt, current room only.
+   */
+  parryAt(box: Box): Point | null {
+    const room = this.current
+    if (!room) return null
+    for (const entity of room.entities) {
+      const at = entity.parryAt(box)
+      if (at !== null) return at
     }
     return null
   }

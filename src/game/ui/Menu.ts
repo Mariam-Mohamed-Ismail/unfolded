@@ -33,7 +33,17 @@ export type MenuItem = {
    * cannot select. The cursor steps over it and the mouse ignores it.
    */
   choose?: () => void
+  /**
+   * Anything else this row draws, into the menu's own Graphics and after
+   * the paper quad, with the row's box. A function like `label` and read
+   * each frame for the same reason: a star earned this session has to show
+   * up without the page being rebuilt.
+   */
+  decor?: (g: Phaser.GameObjects.Graphics, box: MenuBox) => void
 }
+
+/** Where a row sits. What a decoration is positioned against. */
+export type MenuBox = { x: number; y: number; w: number; h: number }
 
 /**
  * A list of paper buttons with one highlighted. Shared by every screen, so
@@ -295,6 +305,10 @@ export class Menu {
       this.gfx.lineStyle(2, COLOR_INK, 1)
       this.gfx.strokePoints(points, true)
       this.gfx.lineBetween(b.x + b.w - fold, b.y, b.x + b.w, b.y + fold)
+
+      // Whatever else the row carries - a room's stars - on top of the
+      // paper and under nothing, since the label is a separate object.
+      this.items[i].decor?.(this.gfx, b)
 
       if (!label) continue
       const text = this.items[i].label()

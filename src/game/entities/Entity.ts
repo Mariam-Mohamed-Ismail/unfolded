@@ -1,5 +1,6 @@
 import type * as Phaser from 'phaser'
 import type { EntitySpec, Palette } from '../levels/types.ts'
+import type { Point } from '../geom.ts'
 import type { Solid, Updraft } from '../Player.ts'
 import { TILE } from '../constants.ts'
 
@@ -325,6 +326,18 @@ export class Entity {
    * nothing ever reaches into the player.
    */
   dangerAt(_box: Box): number | null {
+    return null
+  }
+
+  /**
+   * Is one of your projectiles inside `box`? If so, send it back — the Parry
+   * crease. Returns the point it was turned at, for the hit effect, or null.
+   *
+   * The sword asks the level, so the swing never has to know what a snake is
+   * or that venom exists. Everything about a reflected shot — who it can hurt
+   * now, and what it does when it lands — stays with whatever fired it.
+   */
+  parryAt(_box: Box): Point | null {
     return null
   }
 

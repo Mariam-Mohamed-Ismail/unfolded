@@ -78,7 +78,8 @@ export class LevelCompleteScene extends Phaser.Scene {
       next
         ? {
             label: () => 'Continue',
-            choose: () => flow.startGame({ level: level + 1 }),
+            // Carrying the run: this is the one start that continues it.
+            choose: () => flow.startGame({ level: level + 1, carry: true }),
           }
         : {
             label: () => 'Play again',

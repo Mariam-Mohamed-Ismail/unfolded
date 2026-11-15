@@ -7,12 +7,12 @@ import { Sword } from '../src/game/Sword.ts'
 import { level1 } from '../src/game/levels/level1.ts'
 import { level2 } from '../src/game/levels/level2.ts'
 import {
-  CREASES,
-  clearCrease,
-  crease,
-  chosenYet,
+  CREASE_ROUNDS,
+  clearCreases,
+  creases,
   hasGlider,
   hasKeen,
+  rounds,
   setCrease,
 } from '../src/game/Upgrades.ts'
 import {
@@ -77,31 +77,39 @@ function run(data, tileX, h = 0, held = {}) {
 // =====================================================================
 //  The module.
 // =====================================================================
+// L3-8 changed three of these. The module used to hold one crease, so
+// "picking the keen edge swaps it" was the behaviour; it now holds a list and
+// a second pick *adds*. The assertions below are the same questions asked of
+// the list, and the swap check has become its opposite.
 {
-  clearCrease()
-  record(crease() === 'none', 'a fresh session has no crease')
-  record(!chosenYet(), 'and nothing has been chosen')
+  clearCreases()
+  record(creases().length === 0, 'a fresh session has no crease')
+  record(rounds() === 0, 'and no choice has been made')
   record(!hasGlider() && !hasKeen(), 'so neither effect is on')
 
-  record(CREASES.length === 2, `two cards are offered`)
+  const first = CREASE_ROUNDS[0]
+  record(first.length === 2, `two cards are offered`)
   record(
-    CREASES.some((c) => c.id === 'glider') && CREASES.some((c) => c.id === 'keen'),
-    `the spec's two: ${CREASES.map((c) => c.name).join(' and ')}`,
+    first.some((c) => c.id === 'glider') && first.some((c) => c.id === 'keen'),
+    `the spec's two: ${first.map((c) => c.name).join(' and ')}`,
   )
   record(
-    CREASES.every((c) => c.effect.length > 0),
+    CREASE_ROUNDS.every((r) => r.every((c) => c.effect.length > 0)),
     'each with a line saying what it does',
   )
 
   setCrease('glider')
-  record(crease() === 'glider' && chosenYet(), 'picking the glider sticks')
-  record(hasGlider() && !hasKeen(), 'and turns on exactly one effect')
+  record(hasGlider() && rounds() === 1, 'picking the glider sticks')
+  record(!hasKeen(), 'and turns on exactly one effect')
 
   setCrease('keen')
-  record(hasKeen() && !hasGlider(), 'picking the keen edge swaps it')
+  record(
+    hasKeen() && hasGlider(),
+    'a second pick adds to the first rather than swapping it',
+  )
 
-  clearCrease()
-  record(crease() === 'none', 'and it can be cleared for a new session')
+  clearCreases()
+  record(creases().length === 0, 'and it can be cleared for a new session')
 }
 
 // =====================================================================
@@ -119,7 +127,7 @@ function run(data, tileX, h = 0, held = {}) {
   }
 
   const terminal = (glide, holding) => {
-    clearCrease()
+    clearCreases()
     if (glide) setCrease('glider')
     const t = run(air, 20, 0, { jumpHeld: holding })
     let top = 0
@@ -127,7 +135,7 @@ function run(data, tileX, h = 0, held = {}) {
       t.step()
       top = M.max(top, t.p.vy)
     }
-    clearCrease()
+    clearCreases()
     return top
   }
 
@@ -152,7 +160,7 @@ function run(data, tileX, h = 0, held = {}) {
   // It must not slow a rise, or it would cap every jump. Needs solid
   // ground: the drop level above spawns you already falling.
   const ground = { ...air, solids: [{ x: 0, w: 40, h: 0 }] }
-  clearCrease()
+  clearCreases()
   setCrease('glider')
   {
     const t = run(ground, 20, 0, { jumpHeld: true })
@@ -191,7 +199,7 @@ function run(data, tileX, h = 0, held = {}) {
     }
     record(!liftGlide, 'and inside a fan column it never fights the draught')
   }
-  clearCrease()
+  clearCreases()
 }
 
 // =====================================================================
@@ -218,7 +226,7 @@ function run(data, tileX, h = 0, held = {}) {
     return best
   }
 
-  clearCrease()
+  clearCreases()
   const plain = reach()
   record(plain !== null, `without a crease the seal is cut from ${plain?.toFixed(2)} tiles`)
 
@@ -233,13 +241,13 @@ function run(data, tileX, h = 0, held = {}) {
     keen !== null && M.abs(keen - 2.5) < 0.5,
     `about the spec's 2.5 tiles (${keen?.toFixed(2)})`,
   )
-  clearCrease()
+  clearCreases()
 }
 
 // --- and the box itself ---
 {
   const sword = new Sword()
-  clearCrease()
+  clearCreases()
   record(sword.reach() === SLASH_BOX_W, `the hit area is ${sword.reach()}px by default`)
   setCrease('keen')
   record(sword.reach() === SLASH_KEEN_W, `and ${sword.reach()}px with the keen edge`)
@@ -247,9 +255,12 @@ function run(data, tileX, h = 0, held = {}) {
     SLASH_KEEN_W / TILE === 2.5,
     `${SLASH_KEEN_W}px is exactly ${SLASH_KEEN_W / TILE} tiles, which is why no second rule is needed`,
   )
+  // L3-8: creases accumulate now, so the keen edge has to be cleared before
+  // the glider is asked the same question - otherwise this measures both.
+  clearCreases()
   setCrease('glider')
   record(sword.reach() === SLASH_BOX_W, 'the glider leaves the sword alone')
-  clearCrease()
+  clearCreases()
 }
 
 // =====================================================================
@@ -304,7 +315,7 @@ function run2b() {
 }
 
 for (const which of ['none', 'glider', 'keen']) {
-  clearCrease()
+  clearCreases()
   if (which !== 'none') setCrease(which)
 
   const c = run2c()
@@ -318,15 +329,15 @@ for (const which of ['none', 'glider', 'keen']) {
     `2B finishes with crease "${which}" in ${b.secs.toFixed(1)}s for ${b.hits} hits`,
   )
 }
-clearCrease()
+clearCreases()
 
 // --- the glider is a help, not a requirement ---
 {
-  clearCrease()
+  clearCreases()
   const without = run2c()
   setCrease('glider')
   const with_ = run2c()
-  clearCrease()
+  clearCreases()
   record(
     without.done && with_.done,
     `2C is beatable both ways: ${without.secs.toFixed(1)}s without the glider, ${with_.secs.toFixed(1)}s with it`,
@@ -340,7 +351,7 @@ clearCrease()
 // --- Level 1 is untouched by either crease ---
 {
   const trace = (which) => {
-    clearCrease()
+    clearCreases()
     if (which !== 'none') setCrease(which)
     const level = new Level(level1)
     const p = new Player(
@@ -360,7 +371,7 @@ clearCrease()
       input.jumpPressed = false
       seen.push([p.x, p.y])
     }
-    clearCrease()
+    clearCreases()
     return seen
   }
 
@@ -425,7 +436,7 @@ clearCrease()
   record(flow.hasNext(1) === true, 'and one after Level 2')
   record(flow.hasNext(2) === false, 'and none after Level 3')
 
-  clearCrease()
+  clearCreases()
   started.length = 0
   flow.startGame({})
   record(
@@ -455,7 +466,7 @@ clearCrease()
     started.at(-1)?.k === 'Game' && started.at(-1)?.d?.roomId === '2c',
     'with a crease already chosen, room select goes straight in',
   )
-  clearCrease()
+  clearCreases()
 }
 
 const nl = String.fromCharCode(10)

@@ -32,3 +32,8 @@ Test: each room is beatable, nothing feels unfair, and the bat in 3A and 3C bend
 Step L3-8 – Second crease choice
 Test: the choice screen appears after Level 2, both new creases work, the earlier crease is kept, and no room needs any crease.
 
+Step L3-9 – Stars and par times
+Test: Room select shows 3 stars per room for all nine rooms, kept for the session, with best time and fewest resets.
+
+Step L3-10 – The ending
+Test: after the 3C exit door the sequence plays (about 12 seconds), can be skipped with Enter after 2 seconds, and ends on a Game complete screen with the right totals.

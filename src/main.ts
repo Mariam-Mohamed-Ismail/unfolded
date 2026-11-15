@@ -3,6 +3,7 @@ import './style.css'
 import { COLOR_BG, GAME_HEIGHT, GAME_WIDTH } from './game/constants.ts'
 import { BootScene } from './game/scenes/BootScene.ts'
 import { CreaseScene } from './game/scenes/CreaseScene.ts'
+import { GameCompleteScene } from './game/scenes/GameCompleteScene.ts'
 import { GameScene } from './game/scenes/GameScene.ts'
 import { LevelCompleteScene } from './game/scenes/LevelCompleteScene.ts'
 import { MainMenuScene } from './game/scenes/MainMenuScene.ts'
@@ -27,6 +28,7 @@ const config: Phaser.Types.Core.GameConfig = {
     GameScene,
     PauseScene,
     LevelCompleteScene,
+    GameCompleteScene,
     CreaseScene,
   ],
   // All sound is hand-built Web Audio in Audio.ts, so Phaser's sound

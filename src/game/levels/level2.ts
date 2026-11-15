@@ -32,6 +32,8 @@ export const level2: LevelData = {
 
   // Level 2 is where danger starts, so this is the level that shows health.
   hazards: true,
+  // The first crease is chosen on the way in.
+  creases: 1,
 
   spawn: { x: 2, h: 0 },
 

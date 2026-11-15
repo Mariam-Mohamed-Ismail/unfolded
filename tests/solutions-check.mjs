@@ -232,6 +232,12 @@ for (const room of ['3b', '3c']) {
   t.level.resetRoom()
   const back = t.level.respawnPoint()
   t.p.reset(back.x, back.y, t.level.solids)
+  // And the pips back, because a room starts at a checkpoint and that is
+  // where health fills. This line is the one GameScene.toRoomStart() gained
+  // in L3-8: without it the second pass runs on whatever the first pass left,
+  // a hit that knocked the player back the first time is ignored the second
+  // (health.take() refuses it), and the replay comes apart mid-route.
+  t.health.refill()
   if (sol.swordOut !== undefined) t.level.setSwordOut(sol.swordOut)
   // Everything openRoom() does after building the room, in the same order:
   // a blank input, then one step. Both halves matter. Without the step the

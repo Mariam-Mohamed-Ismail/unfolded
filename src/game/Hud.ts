@@ -1,11 +1,13 @@
 import * as Phaser from 'phaser'
 import type { Health } from './Health.ts'
-import { crease } from './Upgrades.ts'
+import { creases } from './Upgrades.ts'
+import type { Crease } from './Upgrades.ts'
 import {
   COLOR_FOLD,
   COLOR_HURT,
   COLOR_INK,
   CREASE_ICON_DY,
+  CREASE_ICON_GAP,
   CREASE_ICON_PX,
   GAME_WIDTH,
   HEALTH_MAX,
@@ -91,15 +93,21 @@ export class Hud {
   }
 
   /**
-   * The crease, under the health: a folded wing for the glider, a blade for
-   * the keen edge. Drawn rather than written, like everything else here.
+   * The creases earned, in a row under the health: one small icon each, in
+   * the order they were chosen. Drawn rather than written, like everything
+   * else here.
    */
   private drawCrease(y: number): void {
-    const which = crease()
-    if (which === 'none') return
     const r = CREASE_ICON_PX
-    const x = HUD_PAD + r
+    let x = HUD_PAD + r
+    for (const which of creases()) {
+      this.icon(which, x, y, r)
+      x += r * 2 + CREASE_ICON_GAP
+    }
+  }
 
+  /** One crease, as a shape: four creases, four silhouettes. */
+  private icon(which: Crease, x: number, y: number, r: number): void {
     this.gfx.fillStyle(COLOR_FOLD, 0.9)
     this.gfx.lineStyle(HEALTH_PIP_LINE, COLOR_INK, 0.8)
     if (which === 'glider') {
@@ -107,10 +115,20 @@ export class Hud {
       this.gfx.fillTriangle(x - r, y + r, x + r, y - r, x + r, y + r)
       this.gfx.strokeTriangle(x - r, y + r, x + r, y - r, x + r, y + r)
       this.gfx.lineBetween(x + r, y - r, x, y + r)
-    } else {
+    } else if (which === 'keen') {
       // A long thin blade.
       this.gfx.fillTriangle(x - r, y + r, x + r, y - r, x + r * 0.2, y + r)
       this.gfx.strokeTriangle(x - r, y + r, x + r, y - r, x + r * 0.2, y + r)
+    } else if (which === 'quick') {
+      // The flat form itself: a squat sliver, creased.
+      this.gfx.fillTriangle(x - r, y, x + r, y - r * 0.5, x + r, y + r * 0.5)
+      this.gfx.strokeTriangle(x - r, y, x + r, y - r * 0.5, x + r, y + r * 0.5)
+      this.gfx.lineBetween(x - r, y, x + r, y)
+    } else {
+      // A blade turning something back: a chevron pointing the other way.
+      this.gfx.fillTriangle(x + r, y - r, x + r, y + r, x - r, y)
+      this.gfx.strokeTriangle(x + r, y - r, x + r, y + r, x - r, y)
+      this.gfx.lineBetween(x + r * 0.2, y - r * 0.6, x + r * 0.2, y + r * 0.6)
     }
   }
 

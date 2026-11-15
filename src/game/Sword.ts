@@ -1,6 +1,6 @@
 import type * as Phaser from 'phaser'
 import { rotAbout } from './geom.ts'
-import { hasKeen } from './Upgrades.ts'
+import { hasKeen, hasParry } from './Upgrades.ts'
 import type { Box, Fx } from './entities/Entity.ts'
 import type { Level } from './Level.ts'
 import type { Player } from './Player.ts'
@@ -8,6 +8,7 @@ import type { Point } from './geom.ts'
 import {
   COLOR_FORM,
   COLOR_INK,
+  COLOR_VENOM,
   FOLD_OUTLINE,
   KNOCKBACK,
   PARTICLES_HIT,
@@ -175,6 +176,22 @@ export class Sword {
 
   private resolve(player: Player, level: Level, fx: Fx): void {
     const box = this.box(player)
+
+    // The Parry crease, before the hit loop: a blob in the swing is sent
+    // back. It is not a hurtTarget - it belongs to whatever fired it - so it
+    // is asked for separately, and the swing still carries on to the bodies.
+    if (hasParry()) {
+      const at = level.parryAt(box)
+      if (at) {
+        player.freezeFor(SLASH_HITSTOP_MS / 1000)
+        fx.shake(SLASH_SHAKE, SLASH_SHAKE_MS)
+        fx.dust(at[0], at[1], PARTICLES_HIT, COLOR_VENOM)
+        // No voice of its own: the spec gives the snake four sounds and the
+        // parry none, so this is the same clack as any other connected hit.
+        fx.sound('hit')
+      }
+    }
+
     for (const target of level.hurtTargets()) {
       if (this.struck.has(target.id)) continue
       const hurt = target.hurtBox()

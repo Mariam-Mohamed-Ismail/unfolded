@@ -81,6 +81,9 @@ import {
   SFX_STING_GAIN,
   SFX_STING_NOTES,
   SFX_STING_NOTE_MS,
+  SFX_CHIME_GAIN,
+  SFX_CHIME_MS,
+  SFX_CHIME_NOTES,
   SFX_STING_STEP_MS,
   SFX_THUD_FROM_HZ,
   SFX_TWANG_FROM_HZ,
@@ -314,6 +317,35 @@ export class Audio {
       osc.start(at)
       osc.stop(at + dur)
     }
+  }
+
+  /**
+   * One note of the ending: a tile of the sheet landing. `step` climbs the
+   * pentatonic, so nine landings play one rising phrase. The sting's shape -
+   * a bare sine with a soft attack and a long fall - at a gentler length.
+   */
+  chime(step: number): void {
+    const ctx = this.wake()
+    if (!ctx || !this.master) return
+    this.played++
+
+    const notes = SFX_CHIME_NOTES
+    const hz = notes[Math.max(0, Math.min(notes.length - 1, step))]
+    const at = ctx.currentTime
+    const dur = SFX_CHIME_MS / 1000
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(hz, at)
+
+    const env = ctx.createGain()
+    env.gain.setValueAtTime(SILENT, at)
+    env.gain.linearRampToValueAtTime(SFX_CHIME_GAIN, at + Math.min(ATTACK, dur / 2))
+    env.gain.exponentialRampToValueAtTime(SILENT, at + dur)
+
+    osc.connect(env)
+    env.connect(this.master)
+    osc.start(at)
+    osc.stop(at + dur)
   }
 
   /**

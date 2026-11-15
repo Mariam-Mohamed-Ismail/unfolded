@@ -817,6 +817,87 @@ export const SFX_THUD_MS = 190
 // Solved by tests/calibrate.mjs to -26 dBFS: a placeholder 1 was 2.9dB hot.
 export const SFX_THUD_GAIN = 0.72
 
+// --- Step L3-8: the second crease choice ---
+// Quick fold's two halves. The flat cap is read per frame rather than cached,
+// so holding the crease changes the slide immediately; FLAT_MAX_SPEED above
+// stays the number a player without it moves at.
+export const FLAT_QUICK_SPEED = 280
+
+// The parry: a reflected blob keeps its direction reversed and gains speed.
+export const PARRY_SPEED_MULT = 1.3
+
+// Two icons fit under the health pips now, so they need a gap between them.
+export const CREASE_ICON_GAP = 7
+
+// --- Step L3-9: stars and par times ---
+// Par times in seconds, straight from the spec's table, keyed by room id so
+// a level's rooms carry their own targets and nothing here needs an index.
+// Here rather than in the level data because the spec asks for them here:
+// they are the numbers most likely to move after playtesting.
+//
+// The movement lane has no par. The spec's table lists nine rooms and the
+// lane is not one of them, so it can earn the finish star and the clean
+// star and shows two. Inventing a tenth number is not mine to do.
+export const ROOM_PAR_S: Record<string, number> = {
+  '1a': 20,
+  '1b': 20,
+  '1c': 25,
+  '2a': 35,
+  '2b': 45,
+  '2c': 50,
+  '3a': 50,
+  '3b': 60,
+  '3c': 80,
+}
+
+// One paper star in a Room select row: half-width of its points, the gap
+// between two of them, and where the group sits inside the row.
+export const STAR_PX = 7
+export const STAR_GAP = 5
+export const STAR_INSET = 16
+
+// --- Step L3-10: the ending ---
+// The sequence's clock, in seconds from the moment the 3C door is touched.
+// About twelve in all, as the spec asks, in the spec's own order.
+export const END_FREEZE_S = 0.5
+export const END_DRIFT_END_S = 3.0
+// Nine pieces, one every half second: 3.0 to 7.5.
+export const END_UNFOLD_EACH_S = 0.5
+// The seams between the nine tiles fade, leaving one blank square.
+export const END_SEAM_S = 1.0
+// Then the pull-back, until the sheet fills the view and its creases are
+// drawn.
+export const END_PULL_END_S = 10.0
+export const END_TITLE_IN_S = 1.0
+export const END_TOTAL_S = 12.0
+// Enter does nothing before this, so a key held through the door cannot
+// throw the ending away.
+export const END_SKIP_AFTER_S = 2.0
+
+// How far the pieces drift apart, how fast they turn, and how much they bob.
+export const END_DRIFT_PX = 54
+export const END_DRIFT_SPIN = 1.4
+export const END_BOB_PX = 4
+export const END_BOB_HZ = 0.7
+// The nine tiles are a 3x3 sheet, this many pixels a side each.
+export const END_TILE_PX = 16
+// The sheet once the camera has pulled back, as a fraction of the screen
+// height, and how dark its creases are drawn.
+export const END_SHEET_FRAC = 0.78
+export const END_CREASE_ALPHA = 0.55
+export const END_TITLE_FONT_PX = 64
+// Drawn above everything, the HUD included.
+export const END_DEPTH = 980
+
+// The chime: one sine note per tile as it lands, climbing a major
+// pentatonic so nine of them read as one rising phrase.
+export const SFX_CHIME_NOTES = [
+  523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51, 1567.98,
+]
+export const SFX_CHIME_MS = 900
+// Solved by tests/calibrate.mjs to -26 dBFS: a placeholder 1 was 4.4dB hot.
+export const SFX_CHIME_GAIN = 0.6
+
 // --- Step 9: live tuning ---
 // The eight values above are declared with `let` rather than `const` so the
 // F1 panel can change them while the game runs. ESM exports are live

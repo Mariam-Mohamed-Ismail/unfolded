@@ -10,6 +10,7 @@ import { dashedLine } from '../geom.ts'
 import {
   COLOR_INK,
   COLOR_VENOM,
+  PARRY_SPEED_MULT,
   PARTICLES_VENOM,
   SNAKE_AIM_S,
   SNAKE_HURT_SHADE,
@@ -73,13 +74,19 @@ export type SnakeState =
   | 'stagger'
   | 'gone'
 
-/** One blob of venom. The snake owns it; there is only ever one. */
+/**
+ * One blob of venom. The snake owns it; there is only ever one.
+ *
+ * `back` is the Parry crease: a blob that has been turned around no longer
+ * threatens the player, and lands on the snake instead.
+ */
 type Blob = {
   x: number
   y: number
   vx: number
   vy: number
   spin: number
+  back: boolean
 }
 
 /**
@@ -602,7 +609,7 @@ export class Snake extends Enemy<SnakeState> {
     if (!aim) return
     const from = this.mouth()
     const vel = this.launch(aim)
-    this.blob = { x: from[0], y: from[1], vx: vel[0], vy: vel[1], spin: 0 }
+    this.blob = { x: from[0], y: from[1], vx: vel[0], vy: vel[1], spin: 0, back: false }
     this.blobSpent = false
     world.fx.sound('spit')
   }
@@ -623,6 +630,19 @@ export class Snake extends Enemy<SnakeState> {
     b.y += b.vy * dt
 
     const box = this.blobBox(b)
+
+    // Its own venom, coming back: the spec's 1 damage. Checked before solids
+    // so a snake standing on the floor it was parried along still takes it.
+    if (b.back && this.alive() && this.state !== 'gone') {
+      const me = this.box()
+      if (me && overlaps(me, box)) {
+        world.fx.dust(b.x, b.y, PARTICLES_VENOM, COLOR_VENOM)
+        this.blob = null
+        this.hurt(Math.sign(b.vx) || 1)
+        return
+      }
+    }
+
     for (const sol of world.solids) {
       if (
         box.right > sol.x &&
@@ -688,7 +708,9 @@ export class Snake extends Enemy<SnakeState> {
    */
   dangerAt(box: Box): number | null {
     const b = this.blob
-    if (b && !this.blobSpent && overlaps(this.blobBox(b), box)) {
+    // A parried blob is the player's now, so it flies straight past them;
+    // only the body is left to walk into.
+    if (b && !b.back && !this.blobSpent && overlaps(this.blobBox(b), box)) {
       this.blobSpent = true
       const at = b.x
       this.blob = null
@@ -698,6 +720,26 @@ export class Snake extends Enemy<SnakeState> {
     const me = this.box()
     if (me && overlaps(me, box)) return this.hx
     return null
+  }
+
+  /**
+   * The Parry crease: a slash that catches the venom turns it around.
+   *
+   * It is a true reflection — the velocity is negated and scaled, so the blob
+   * retraces the arc it came along, which points it back at whatever fired
+   * it. Gravity means it does not retrace exactly, which is why it comes back
+   * faster than it left.
+   *
+   * A blob can only be parried once; after that it belongs to the player.
+   */
+  parryAt(box: Box): Point | null {
+    const b = this.blob
+    if (!b || b.back || this.blobSpent) return null
+    if (!overlaps(this.blobBox(b), box)) return null
+    b.vx *= -PARRY_SPEED_MULT
+    b.vy *= -PARRY_SPEED_MULT
+    b.back = true
+    return [b.x, b.y]
   }
 
   /**

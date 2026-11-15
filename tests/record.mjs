@@ -35,8 +35,26 @@ function record(roomId, route, maxSeconds = 40) {
   // Level 3 file claimed the blade began drawn when it began sheathed.
   const startedDrawn = t.level.swordOut()
   let solved = false
+  // The four momentary keys as they were last step. A keyboard cannot press
+  // one twice without releasing it, and Playback honours that: it derives
+  // each press from an edge in the held state, so a route that sets one
+  // every step is recorded as a single press and the file then replays a
+  // different run from the one it recorded. Routes are written as conditions
+  // ("slash while the bat is diving"), which is exactly that mistake, so the
+  // release is inserted here once rather than remembered in every route.
+  let down = { dash: false, sword: false, slash: false, reset: false }
   for (let f = 0; f < 60 * maxSeconds && !solved; f++) {
     solved = route(t, f) === true
+    if (down.dash) t.input.dashPressed = false
+    if (down.sword) t.input.swordPressed = false
+    if (down.slash) t.input.slashPressed = false
+    if (down.reset) t.input.resetPressed = false
+    down = {
+      dash: t.input.dashPressed,
+      sword: t.input.swordPressed,
+      slash: t.input.slashPressed,
+      reset: t.input.resetPressed,
+    }
     // Sampled after the route has set the input and before the step runs
     // it, which is the order GameScene samples in.
     rec.sample(heldOf(t.input))
@@ -173,7 +191,11 @@ const c = record('3c', (t, f) => {
       t.input.dir = 0
       return false
     }
-    t.input.flatHeld = x > 88.5 && x < 92.8
+    // Fold on the shaft floor, not on the way down to it: starting a fold in
+    // mid-air is the Quick fold crease now (L3-8), and this route has to work
+    // without any crease. Already flat counts, so the fold is not dropped the
+    // moment the slit's floor stops counting as ground.
+    t.input.flatHeld = x > 88.5 && x < 92.8 && (t.p.grounded || t.p.isFlat())
     if (x > 97.4 && !t.p.isFlat()) {
       t.input.dir = 0
       t.input.slashPressed = true

@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
 import type { Input } from './Input.ts'
 import { PlayerView } from './PlayerView.ts'
-import { hasGlider } from './Upgrades.ts'
+import { hasGlider, hasQuick } from './Upgrades.ts'
 import {
   ACCEL,
   AIR_ACCEL,
@@ -14,6 +14,7 @@ import {
   FOOTSTEP_MS,
   FLAT_FRICTION,
   FLAT_MAX_SPEED,
+  FLAT_QUICK_SPEED,
   FOLD_TIME_MS,
   GLIDE_FALL_SPEED,
   DASH_COOLDOWN,
@@ -508,9 +509,13 @@ export class Player {
    * friction and cannot be topped up; below the cap you steer normally.
    */
   private slideX(dt: number, dir: number): void {
-    if (Math.abs(this.vx) > FLAT_MAX_SPEED) {
+    // Read per frame, never cached: picking Quick fold mid-session has to be
+    // felt on the next slide.
+    const cap = hasQuick() ? FLAT_QUICK_SPEED : FLAT_MAX_SPEED
+
+    if (Math.abs(this.vx) > cap) {
       const sign = Math.sign(this.vx)
-      this.vx = sign * Math.max(FLAT_MAX_SPEED, Math.abs(this.vx) - FLAT_FRICTION * dt)
+      this.vx = sign * Math.max(cap, Math.abs(this.vx) - FLAT_FRICTION * dt)
       return
     }
 
@@ -525,11 +530,7 @@ export class Player {
     const accel = this.grounded ? ACCEL : AIR_ACCEL
     const turning = this.vx !== 0 && Math.sign(this.vx) !== dir
     const rate = turning ? decel : accel
-    this.vx = Phaser.Math.Clamp(
-      this.vx + dir * rate * dt,
-      -FLAT_MAX_SPEED,
-      FLAT_MAX_SPEED,
-    )
+    this.vx = Phaser.Math.Clamp(this.vx + dir * rate * dt, -cap, cap)
   }
 
   private tickBuffer(dt: number, input: Input): void {
@@ -595,6 +596,12 @@ export class Player {
 
     if (input.flatHeld) {
       if (this.foldT === 0) {
+        // Starting a fold needs the floor under you. Quick fold is exactly
+        // this restriction lifted — the spec's "can enter flat form in
+        // mid-air" only means something if the plain player cannot. Note it
+        // gates the *start* only: a fold begun on the ground stays folded off
+        // a ledge, so dropping into a slit is untouched.
+        if (!this.grounded && !hasQuick()) return
         this.justFolded = true
         // Folding out of a run keeps the momentum, capped. Running tops out
         // below the cap, so this only bites coming out of a dash.

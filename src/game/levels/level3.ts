@@ -43,6 +43,10 @@ export const level3: LevelData = {
 
   // Both enemies live here, so the health pips show.
   hazards: true,
+  // The second choice happens on the way in, and the player keeps both.
+  creases: 2,
+  // The last level: its door plays the ending.
+  ending: true,
   // 228px of vertical scroll to play with, so the view eases rather than
   // chasing every jump.
   camLerpY: CAM_LERP_Y,

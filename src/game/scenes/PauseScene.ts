@@ -3,6 +3,7 @@ import { CONTROLS } from '../ui/controls.ts'
 import { Menu } from '../ui/Menu.ts'
 import { roomGroups } from '../levels/index.ts'
 import { roomLabel } from '../Records.ts'
+import { drawStars } from '../ui/star.ts'
 import type { Audio } from '../Audio.ts'
 import type { Records } from '../Records.ts'
 import type { MenuItem } from '../ui/Menu.ts'
@@ -133,6 +134,15 @@ export class PauseScene extends Phaser.Scene {
         for (const choice of group.choices) {
           items.push({
             label: () => roomLabel(choice.name, records?.get(choice.room)),
+            // Up to three paper stars at the right-hand end of the row,
+            // read each frame so one earned this session shows at once.
+            decor: (g, b) =>
+              drawStars(
+                g,
+                b,
+                records?.stars(choice.room) ?? 0,
+                records?.starsPossible(choice.room) ?? 3,
+              ),
             choose: () =>
               events.emit('game:restart', {
                 level: choice.level,

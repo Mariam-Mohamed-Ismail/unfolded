@@ -26,6 +26,7 @@ export class Input {
   private swordKeys: Phaser.Input.Keyboard.Key[]
   private slashKeys: Phaser.Input.Keyboard.Key[]
   private pauseKeys: Phaser.Input.Keyboard.Key[]
+  private skipKeys: Phaser.Input.Keyboard.Key[]
   private panelKeys: Phaser.Input.Keyboard.Key[][]
   private pointer: Phaser.Input.Pointer
 
@@ -66,6 +67,8 @@ export class Input {
 
   /** True only on the frame Esc goes down. */
   pausePressed = false
+  /** Enter: skips the ending, once it allows skipping. */
+  skipPressed = false
 
   /** True only on the frame F2 goes down: records a solution. */
   recordPressed = false
@@ -86,6 +89,7 @@ export class Input {
   private swordHeld = false
   private slashHeld = false
   private pauseHeld = false
+  private skipHeld = false
   private recordHeld = false
   private replayHeld = false
   private hurtHeld = false
@@ -127,6 +131,7 @@ export class Input {
     this.swordKeys = [kb.addKey('R')]
     this.slashKeys = [kb.addKey('J')]
     this.pauseKeys = [kb.addKey('ESC')]
+    this.skipKeys = [kb.addKey('ENTER')]
     // Polled rather than listened for, so a click lands on a frame like
     // every other input instead of arriving between two.
     this.pointer = scene.input.activePointer
@@ -160,6 +165,7 @@ export class Input {
     this.swordHeld = anyDown(this.swordKeys)
     this.slashHeld = anyDown(this.slashKeys) || this.pointer.leftButtonDown()
     this.pauseHeld = anyDown(this.pauseKeys)
+    this.skipHeld = anyDown(this.skipKeys)
     this.recordHeld = anyDown(this.recordKeys)
     this.replayHeld = anyDown(this.replayKeys)
     this.hurtHeld = anyDown(this.hurtKeys)
@@ -209,6 +215,10 @@ export class Input {
     const pause = anyDown(this.pauseKeys)
     this.pausePressed = pause && !this.pauseHeld
     this.pauseHeld = pause
+
+    const skip = anyDown(this.skipKeys)
+    this.skipPressed = skip && !this.skipHeld
+    this.skipHeld = skip
 
     const record = anyDown(this.recordKeys)
     this.recordPressed = record && !this.recordHeld

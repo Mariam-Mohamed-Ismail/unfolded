@@ -135,6 +135,9 @@ const TONES = [
   // lower one (which carries more energy through the envelope) sets both.
   ['STING', C.SFX_STING_NOTES[1], C.SFX_STING_NOTES[1], C.SFX_STING_NOTE_MS, 'sine', -26, C.SFX_STING_GAIN],
   ['TWANG', C.SFX_TWANG_FROM_HZ, C.SFX_TWANG_TO_HZ, C.SFX_TWANG_MS, 'triangle', -26, C.SFX_TWANG_GAIN],
+  // The ending's chime: nine notes, one shape. Sine energy does not depend
+  // on pitch, so the first note solves all nine.
+  ['CHIME', C.SFX_CHIME_NOTES[0], C.SFX_CHIME_NOTES[0], C.SFX_CHIME_MS, 'sine', -26, C.SFX_CHIME_GAIN],
 ]
 
 for (const [name, a, b, ms, shape, targetDb, current] of TONES) {

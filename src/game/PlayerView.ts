@@ -42,7 +42,7 @@ const TRAIL_FADE = AFTERIMAGE_FADE_MS / 1000
 const SHRUG = SHRUG_MS / 1000
 const RAD = Math.PI / 180
 
-type Tri = [Point, Point, Point]
+export type Tri = [Point, Point, Point]
 
 /**
  * Which joint a piece hangs off. The chain is hip to upper body to arms,
@@ -99,6 +99,8 @@ export class PlayerView {
   private sinceShrug = 0
   private trailLeft = 0
   private trails: Trail[] = []
+  /** The figure as last drawn, in world space. What the ending starts from. */
+  private last: Tri[] = []
 
   constructor(scene: Phaser.Scene) {
     this.gfx = scene.add.graphics()
@@ -109,6 +111,16 @@ export class PlayerView {
     this.pulseX = x
     this.pulseY = y
     this.pulseLeft = RECOVER
+  }
+
+  /**
+   * The nine triangles exactly as they were last drawn, in world space and
+   * copied, so the ending can take the figure apart from where it stands.
+   */
+  pieces(): Tri[] {
+    return this.last.map(
+      (t) => t.map((p): Point => [p[0], p[1]]) as Tri,
+    )
   }
 
   /** The flat form compresses the figure, so there is no shape to swap. */
@@ -131,6 +143,7 @@ export class PlayerView {
     const sy = this.scaleY * (1 + (this.pulseY - 1) * pk)
 
     const tris = this.build(p, sx, sy)
+    this.last = tris
     this.trackTrail(dt, p, tris)
     this.render(tris)
     if (p.isGliding()) this.wing(p)

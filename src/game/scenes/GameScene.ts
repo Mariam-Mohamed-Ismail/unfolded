@@ -9,11 +9,13 @@ import { Level } from '../Level.ts'
 import { Particles } from '../Particles.ts'
 import { Player } from '../Player.ts'
 import { Sword } from '../Sword.ts'
+import { Ending } from '../Ending.ts'
 import { LEVELS } from '../levels/index.ts'
 import type { Records } from '../Records.ts'
+import type { Room } from '../Room.ts'
 import type { Audio } from '../Audio.ts'
 import type { Flow } from '../Flow.ts'
-import type { GameStart } from '../Flow.ts'
+import type { FinishedPayload, GameStart } from '../Flow.ts'
 import type { Fx } from '../entities/Entity.ts'
 import {
   FixedClock,
@@ -28,6 +30,11 @@ import {
 } from '../Solutions.ts'
 import {
   SHAKE_LAND_TILES,
+  COLOR_INK,
+  END_DEPTH,
+  END_TITLE_FONT_PX,
+  GAME_HEIGHT,
+  GAME_WIDTH,
   COLOR_HURT,
   DEATH_PARTICLES,
   FIXED_DT,
@@ -59,6 +66,15 @@ export class GameScene extends Phaser.Scene {
   private entityGfx!: Phaser.GameObjects.Graphics
   private labels!: Labels
   private hud!: Hud
+  /**
+   * The ending, once the last level's door has been touched. While it runs
+   * it owns the frame: no play, no clocks, just the sequence.
+   */
+  private ending: Ending | null = null
+  /** What the level reports, captured at the door so the credits are not timed. */
+  private endStats: FinishedPayload | null = null
+  private endGfx!: Phaser.GameObjects.Graphics
+  private endTitle!: Phaser.GameObjects.Text
   private sword!: Sword
   private fx!: Fx
 
@@ -72,6 +88,16 @@ export class GameScene extends Phaser.Scene {
   private roomId: string | null = null
   private roomTime = 0
   private roomResets = 0
+  private roomHits = 0
+  /**
+   * The room itself, not just its id, because banking needs its bounds:
+   * a visit counts as finished when the next room begins at or past this
+   * room's right edge, which is the level's own rule for having passed an
+   * exit. Read per transition rather than off Room.cleared, which is
+   * sticky - walking back out of a room cleared earlier would otherwise
+   * bank a second, much shorter visit.
+   */
+  private roomRef: Room | null = null
   private records!: Records
   /** Latched, so finishing is reported once rather than every frame. */
   private reported = false
@@ -101,7 +127,11 @@ export class GameScene extends Phaser.Scene {
     this.roomId = null
     this.roomTime = 0
     this.roomResets = 0
+    this.roomHits = 0
+    this.roomRef = null
     this.reported = false
+    this.ending = null
+    this.endStats = null
   }
 
   create(): void {
@@ -133,6 +163,18 @@ export class GameScene extends Phaser.Scene {
     // After the player, so paper lands on top of the figure.
     this.particles = new Particles(this)
     this.hud = new Hud(this)
+    // The ending draws in screen space, above the world and the HUD.
+    this.endGfx = this.add.graphics().setScrollFactor(0).setDepth(END_DEPTH)
+    this.endTitle = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Unfolded', {
+        fontFamily: 'monospace',
+        fontSize: `${END_TITLE_FONT_PX}px`,
+        color: '#' + COLOR_INK.toString(16).padStart(6, '0'),
+      })
+      .setOrigin(0.5, 0.5)
+      .setScrollFactor(0)
+      .setDepth(END_DEPTH + 1)
+      .setAlpha(0)
     // Last, so the overlay draws over everything else.
     this.debug = new Debug(this)
     this.badge = new ToolBadge(this)
@@ -203,6 +245,12 @@ export class GameScene extends Phaser.Scene {
   /** One fixed simulation step. `dt` is always the same number. */
   private step(): void {
     const dt = FIXED_DT
+    // The ending owns the frame once it has begun: nothing else steps, and
+    // the run's clock stays where it was at the door.
+    if (this.ending) {
+      this.stepEnding(dt)
+      return
+    }
     this.elapsed += dt
 
     this.controls.update()
@@ -278,14 +326,21 @@ export class GameScene extends Phaser.Scene {
     if (this.player.y > this.level.heightPx + TILE * 2) this.respawn()
 
     // Per-room timing. The room the player is in owns the seconds, and a
-    // change of room banks the visit that just ended — either direction, so
-    // walking back into 1A banks the 1B attempt.
+    // change of room ends the visit that just ended. Only a visit that
+    // left by the exit is banked: walking into 2C and straight back out
+    // again is not a run through 2C, and before L3-9 it both took that
+    // room's best time and would now have earned it its first star.
     const room = this.level.room()
     if (room && room.id !== this.roomId) {
-      this.bankRoom()
+      // The level's own rule for having passed an exit: the room ahead
+      // begins at or past the edge of the one behind.
+      const out = this.roomRef !== null && room.left >= this.roomRef.right
+      this.bankRoom(out)
       this.roomId = room.id
+      this.roomRef = room
       this.roomTime = 0
       this.roomResets = 0
+      this.roomHits = 0
       // Health fills at every checkpoint, and every room starts at one.
       this.health.refill()
       // Leaving the room is the natural end of a solution for it.
@@ -297,9 +352,10 @@ export class GameScene extends Phaser.Scene {
     // scene comes next is Flow's business, not this one's.
     if (!this.reported && this.level.finished()) {
       this.reported = true
-      // The room you finished in counts as a finished visit.
-      this.bankRoom()
-      this.game.events.emit('level:finished', {
+      // The room you finished in counts as finished however it ends: the
+      // last room of a level has nothing to its right to walk into.
+      this.bankRoom(true)
+      const stats: FinishedPayload = {
         time: this.elapsed,
         resets: this.resets,
         // Which level ended, so the flow knows whether there is another.
@@ -308,7 +364,57 @@ export class GameScene extends Phaser.Scene {
         // reads exactly as it always has rather than claiming a perfect run
         // nothing could have spoiled.
         hits: this.hazards ? this.hitsTaken : undefined,
-      })
+      }
+      // The last level's door plays the ending first; the report waits for
+      // it, taken now so twelve seconds of credits are not on the clock.
+      if (LEVELS[this.start.level ?? 0]?.ending) this.startEnding(stats)
+      else this.game.events.emit('level:finished', stats)
+    }
+  }
+
+  /**
+   * Take the figure apart where it stands. Its nine triangles are handed
+   * over in screen space, the figure itself is hidden, and from here the
+   * ending owns the frame until it says it is done.
+   */
+  private startEnding(stats: FinishedPayload): void {
+    const cam = this.cameras.main
+    const view = cam.worldView
+    const tris = this.player.view.pieces().map(
+      (t) =>
+        t.map(([x, y]): [number, number] => [
+          (x - view.x) * cam.zoom,
+          (y - view.y) * cam.zoom,
+        ]) as [[number, number], [number, number], [number, number]],
+    )
+    this.player.view.gfx.setVisible(false)
+    this.endStats = stats
+    this.ending = new Ending(
+      tris,
+      LEVELS,
+      { w: GAME_WIDTH, h: GAME_HEIGHT },
+      (step) => this.audio.chime(step),
+    )
+  }
+
+  /**
+   * One step of the ending. Only mute and Enter are read: Esc is not, since
+   * a pause menu offering "restart room" in the middle of the credits is a
+   * way to break them. When it is over - or skipped - the level reports
+   * exactly as any other does, and Flow decides what follows.
+   */
+  private stepEnding(dt: number): void {
+    const ending = this.ending
+    if (!ending) return
+    this.controls.update()
+    if (this.controls.mutePressed) this.audio.toggleMute()
+    ending.update(dt, this.controls.skipPressed)
+    // Nothing is asking for a fan's hum any more, so let any fade out.
+    this.audio.humSweep()
+    if (ending.done() && this.endStats) {
+      const stats = this.endStats
+      this.endStats = null
+      this.game.events.emit('level:finished', stats)
     }
   }
 
@@ -319,7 +425,17 @@ export class GameScene extends Phaser.Scene {
   private drawFrame(): void {
     this.entityGfx.clear()
     this.level.render(this.entityGfx)
-    this.sword.draw(this.entityGfx, this.player, this.level.swordOut())
+    // The blade goes with the figure once the ending has taken it apart.
+    if (!this.ending) {
+      this.sword.draw(this.entityGfx, this.player, this.level.swordOut())
+    }
+
+    // The ending, over everything. Cleared every frame like the rest.
+    this.endGfx.clear()
+    if (this.ending) {
+      this.ending.draw(this.endGfx)
+      this.endTitle.setAlpha(this.ending.titleAlpha())
+    }
 
     // The blink through the invulnerable second. The figure is redrawn every
     // frame but alpha lives on the Graphics, so it survives the clear.
@@ -369,6 +485,9 @@ export class GameScene extends Phaser.Scene {
     // Counted here, on the one branch that decides a hit landed, so the
     // number on the complete screen cannot drift from the health bar.
     this.hitsTaken++
+    // And against the room it happened in, which is what the clean-run
+    // star is measured on.
+    this.roomHits++
 
     if (this.health.dead()) {
       this.hurtFeedback()
@@ -411,6 +530,13 @@ export class GameScene extends Phaser.Scene {
     this.level.resetRoom()
     const at = this.level.respawnPoint()
     this.player.reset(at.x, at.y, this.level.solids)
+    // Health too, by the rule already in place a few lines up: it fills at
+    // every checkpoint, and this is a checkpoint. Without it a replay is not
+    // reproducible - F3 twice in a room that costs a hit runs the second
+    // one on fewer pips, so a hit that knocked the player back the first
+    // time is simply ignored the second, and the route comes apart. Found by
+    // the state-leak check in tests/solutions-check.mjs on 3C.
+    this.health.refill()
   }
 
   private say(message: string): void {
@@ -523,12 +649,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Bank the visit that just ended. Quitting mid-room never reaches this,
-   * which is deliberate: an unfinished visit is not a record.
+   * Bank the visit that just ended, if it was finished. Quitting mid-room
+   * never reaches this and neither does backing out of a room the way you
+   * came: an unfinished visit is not a record, which is what `finished`
+   * decides.
    */
-  private bankRoom(): void {
-    if (this.roomId === null) return
-    this.records.submit(this.roomId, this.roomTime, this.roomResets)
+  private bankRoom(finished: boolean): void {
+    if (this.roomId === null || !finished) return
+    this.records.submit(
+      this.roomId,
+      this.roomTime,
+      this.roomResets,
+      this.roomHits,
+    )
   }
 
   private respawn(): void {
