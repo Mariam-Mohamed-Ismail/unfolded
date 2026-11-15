@@ -162,6 +162,10 @@ export class GameScene extends Phaser.Scene {
         else if (name === 'tear') this.audio.tear()
         else if (name === 'sting') this.audio.sting()
         else if (name === 'twang') this.audio.twang()
+        else if (name === 'hiss') this.audio.hiss()
+        else if (name === 'pop') this.audio.pop()
+        else if (name === 'crumple') this.audio.crumple()
+        else if (name === 'spit') this.audio.spit()
         else this.audio.whoosh()
       },
       label: (id, x, y, text, size, alpha) =>

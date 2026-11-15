@@ -661,9 +661,10 @@ export const BAT_WIND_ACCEL = 1200
 // out of the column again, so a bent dive straightens rather than sailing.
 export const BAT_WIND_DAMP = 900
 // Not from the spec: how close a ceiling has to be overhead to count as
-// hiding under it. A little over half the player's standing height, so a
-// slit's gap counts and open ground does not.
-export const BAT_COVER_PX = 40
+// being under it. A little over half the player's standing height, so a
+// slit's gap counts and open ground does not. Shared by the bat (is the
+// player hiding) and the snake (would reappearing here be inside a slit).
+export const COVER_PX = 40
 // Hanging: a slow, small sway, so it reads as alive but not as moving.
 export const BAT_SWAY_PX = 3
 export const BAT_SWAY_HZ = 0.5
@@ -697,6 +698,103 @@ export const CARD_FONT_PX = 13
 // The small crease icon under the health pips.
 export const CREASE_ICON_PX = 8
 export const CREASE_ICON_DY = 18
+
+// --- Step L3-6a: the snake ---
+// From the spec: seven segments, a 36x16 hit box, and every state's length.
+export const SNAKE_SEGMENTS = 7
+export const SNAKE_W = 36
+export const SNAKE_H = 16
+export const SNAKE_HEALTH = 2
+export const SNAKE_PATROL_SPEED = 140
+export const SNAKE_REAR_S = 0.5
+export const SNAKE_VANISH_S = 0.15
+export const SNAKE_MARK_S = 0.3
+export const SNAKE_APPEAR_S = 0.1
+// Notice range, in tiles.
+export const SNAKE_RANGE_X = 9
+export const SNAKE_RANGE_Y = 3
+// How far from the player it reappears, in tiles.
+export const SNAKE_NEAR_MIN = 3
+export const SNAKE_NEAR_MAX = 4
+// Not from the spec. How far apart the segments trail, how much the body
+// waves as it slithers, and how big the fangs are.
+export const SNAKE_SEG_GAP = 9
+export const SNAKE_WAVE_PX = 3
+export const SNAKE_WAVE_HZ = 1.6
+export const SNAKE_FANG_PX = 4
+// How high it lifts its head through the Rear telegraph.
+export const SNAKE_REAR_LIFT = 14
+// The mark it leaves on the floor: how wide, and how fast it pulses.
+export const SNAKE_MARK_PX = 22
+export const SNAKE_MARK_HZ = 6
+// The two bursts: folding away, and popping back.
+export const PARTICLES_SNAKE_VANISH = 10
+export const PARTICLES_SNAKE_APPEAR = 6
+
+// The rest of the machine, from the spec.
+export const SNAKE_AIM_S = 0.4
+export const SNAKE_RECOVER_S = 0.8
+export const SNAKE_RETREAT_COOLDOWN_S = 2.5
+export const SNAKE_STAGGER_S = 0.4
+export const SNAKE_STAGGER_KNOCK = 120
+export const SNAKE_RESPAWN_S = 25
+// Not from the spec: how fast it falls back to its floor after a draught
+// has carried it up. Its own number rather than GRAVITY, which is one of
+// the F1-tunable values and must not be cached.
+export const SNAKE_FALL = 900
+// Not from the spec: how far it slithers away before settling, and how much
+// darker a hurt snake is drawn.
+export const SNAKE_RETREAT_PX = 96
+export const SNAKE_HURT_SHADE = 0.45
+
+// The venom: one blob, lobbed. 300px/s against gravity 600 gives it a
+// maximum range of v*v/g = 150px, which is 4.7 tiles - and the snake
+// reappears 3 to 4 tiles away, so the lob only just reaches. See
+// snake-check: the drawn arc comes from the same solution as the flight,
+// so the telegraph cannot promise a shot the blob will not make.
+export const VENOM_SPEED = 300
+export const VENOM_GRAVITY = 600
+export const VENOM_FAN_ACCEL = 900
+export const VENOM_PX = 6
+export const VENOM_SPIN = 7
+// How the aiming arc is drawn: how far ahead, and how finely.
+export const VENOM_ARC_S = 1.2
+export const VENOM_ARC_STEP_S = 0.05
+export const PARTICLES_VENOM = 5
+
+export const COLOR_VENOM = 0x8e2d6b
+
+// The spec's snake palette: coral body, darker facets.
+export const COLOR_SNAKE = 0xd85a30
+export const COLOR_SNAKE_FACET = 0xa63d1f
+
+// The hiss it rears with, and the pop it reappears with. Both noise voices;
+// both gains solved by tests/calibrate.mjs.
+export const SFX_HISS_FROM_HZ = 5200
+export const SFX_HISS_TO_HZ = 3000
+export const SFX_HISS_MS = 320
+export const SFX_HISS_Q = 1.6
+// Solved by tests/calibrate.mjs, to a quieter -30 dBFS: it is a long
+// background hiss rather than a hit, so it sits under the other voices.
+export const SFX_HISS_GAIN = 1.1
+export const SFX_CRUMPLE_FROM_HZ = 1800
+export const SFX_CRUMPLE_TO_HZ = 600
+export const SFX_CRUMPLE_MS = 160
+export const SFX_CRUMPLE_Q = 1.1
+// Solved by tests/calibrate.mjs, to a quieter -30 dBFS like the hiss.
+export const SFX_CRUMPLE_GAIN = 1.53
+export const SFX_SPIT_FROM_HZ = 2600
+export const SFX_SPIT_TO_HZ = 1100
+export const SFX_SPIT_MS = 110
+export const SFX_SPIT_Q = 1.8
+// Solved by tests/calibrate.mjs: a placeholder 1 was 7dB quiet.
+export const SFX_SPIT_GAIN = 2.28
+export const SFX_POP_FROM_HZ = 900
+export const SFX_POP_TO_HZ = 1700
+export const SFX_POP_MS = 70
+export const SFX_POP_Q = 2.4
+// Solved by tests/calibrate.mjs: a placeholder 1 was 13dB quiet.
+export const SFX_POP_GAIN = 4.6
 
 // The spec's bat palette: slate body, darker wing facets, pink ears.
 export const COLOR_BAT_BODY = 0x5f7f8c

@@ -41,6 +41,11 @@ export type SoundName =
   | 'sting'
   /** A seal's thread snapping. */
   | 'twang'
+  /** The snake rearing, folding away, arriving, and spitting. */
+  | 'hiss'
+  | 'crumple'
+  | 'pop'
+  | 'spit'
 
 export type Fx = {
   dust: (x: number, y: number, count: number, color?: number) => void
@@ -84,6 +89,8 @@ export type PlayerSense = {
   folded: boolean
   /** Folded flat right now, which is what hiding under a pillar looks like. */
   flat: boolean
+  /** -1 or 1. The snake prefers to reappear behind you. */
+  facing: number
   /** The R edge: toggle the sword. */
   sword: boolean
   /** The J or left-click edge: slash. */
@@ -100,6 +107,11 @@ export type EntityWorld = {
   player: PlayerSense
   /** Is the blade drawn? A seal's prompt depends on it. */
   swordOut: boolean
+  /**
+   * Has the player already been past this room's exit? An enemy that
+   * respawns asks, so it stops coming back once the room is finished with.
+   */
+  roomCleared: boolean
   fx: Fx
   /**
    * The world's collision list. Only something that moves needs it — the bat

@@ -20,6 +20,12 @@ export class Room {
   readonly right: number
   readonly entities: Entity[] = []
   readonly checkpoint: Checkpoint | null
+  /**
+   * Has the player been past this room's exit? The spec's snake only
+   * respawns in a room that has not been finished with, so a room needs to
+   * know. Not reset by reset(): walking back in does not un-clear it.
+   */
+  cleared = false
 
   constructor(spec: RoomSpec, registry: EntityRegistry) {
     this.id = spec.id

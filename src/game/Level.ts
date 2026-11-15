@@ -20,6 +20,7 @@ export type PlayerLike = {
   justJumped: boolean
   justDashed: boolean
   justFolded: boolean
+  facing: number
   isFlat: () => boolean
   halfW: () => number
   halfH: () => number
@@ -62,11 +63,13 @@ export class Level {
       dashed: false,
       folded: false,
       flat: false,
+      facing: 1,
       sword: false,
       slash: false,
       failedAt: null,
     },
     swordOut: false,
+    roomCleared: false,
     fx: NO_FX,
     solids: [],
     liftAt: () => null,
@@ -197,6 +200,7 @@ export class Level {
     sense.dashed = player.justDashed
     sense.folded = player.justFolded
     sense.flat = player.isFlat()
+    sense.facing = player.facing
     sense.sword = this.buttons.sword
     sense.slash = this.buttons.slash
     // One frame only, like the player's own event flags.
@@ -210,6 +214,7 @@ export class Level {
     this.world.solids = this.solids
     this.world.liftAt = this.boundLiftAt
     this.world.occupied = this.boundOccupied
+    this.world.roomCleared = this.current?.cleared ?? false
 
     this.current?.update(dt, this.world)
 
@@ -367,6 +372,11 @@ export class Level {
    * presents it fresh rather than mid-puzzle.
    */
   private enter(room: Room | null): void {
+    // Leaving a room to the right counts as having passed its exit, which
+    // is what "cleared" means: the level runs left to right, so the room
+    // behind you is one you are finished with.
+    const leaving = this.current
+    if (leaving && room && room.left >= leaving.right) leaving.cleared = true
     this.current = room
     room?.reset()
   }

@@ -12,6 +12,7 @@ import { Pickup } from './Pickup.ts'
 import { PromptTag } from './PromptTag.ts'
 import { Seal } from './Seal.ts'
 import { Slit } from './Slit.ts'
+import { Snake } from './Snake.ts'
 import { Switch } from './Switch.ts'
 import { TimedSwitch } from './TimedSwitch.ts'
 import type { EntityContext } from './Entity.ts'
@@ -94,6 +95,7 @@ export function createRegistry(): EntityRegistry {
     .register('FoldSheet', (spec, ctx) => new FoldSheet(spec, ctx))
     .register('FoldBridge', (spec, ctx) => new FoldBridge(spec, ctx))
     .register('Bat', (spec, ctx) => new Bat(spec, ctx))
+    .register('Snake', (spec, ctx) => new Snake(spec, ctx))
     .register('Pickup', (spec, ctx) => new Pickup(spec, ctx))
     .register('ExitDoor', (spec, ctx) => new ExitDoor(spec, ctx))
     // Temporary: a target for testing the sword. Removing its line from

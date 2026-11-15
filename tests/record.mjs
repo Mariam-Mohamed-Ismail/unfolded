@@ -125,6 +125,9 @@ const b = record('3b', (t, f) => {
 // =====================================================================
 //  3C: drop in, slide the slit, cut the seal, ride onto the platform.
 // =====================================================================
+// How long 3C has held still in the slit. Outside the route so it
+// survives across frames.
+let held = 0
 const c = record('3c', (t, f) => {
   const SHAFT = t.level.surfaceY(0)
   const HIGH = t.level.surfaceY(14)
@@ -132,6 +135,8 @@ const c = record('3c', (t, f) => {
   const up = SHAFT - foot
   const seal = t.level.entities.byId('seal3c')
   const sheet = t.level.entities.byId('sheet3c')
+  const snake = t.level.entities.byId('snake3c')
+  const bat = t.level.entities.byId('bat3c')
   const col = t.level.entities.byId('fan3c').column()
   const x = t.p.x / TILE
 
@@ -142,8 +147,32 @@ const c = record('3c', (t, f) => {
     t.input.dir = 1
     return t.level.finished()
   }
+
+  // Swat at the bat whenever it commits to a dive and is close, whatever
+  // else is going on. Measured: without this the ride costs three hits -
+  // one per attempt, always at the top of the column - because the bat
+  // hangs in the only drift path. With it, one.
+  const bb = bat.hurtBox()
+  const close =
+    bb &&
+    M.hypot((bb.left + bb.right) / 2 - t.p.x, (bb.top + bb.bottom) / 2 - t.p.y) < 70
+  if (bat.phase() === 'dive' && close && !t.p.isFlat()) {
+    t.input.slashPressed = true
+    t.input.dir = up > 400 ? 1 : 0
+    return false
+  }
+
   if (!seal.isCut()) {
-    // Off the ledge, down the shaft, flat through the pillar, cut the tape.
+    // Off the ledge, down the shaft, then hole up flat in the slit for a
+    // second: the snake cannot see a hidden player, so this takes its
+    // whole cycle off the table before the dash for the seal.
+    const inSlit = x > 90.2 && x < 93.3
+    if (inSlit && held < 60) {
+      held++
+      t.input.flatHeld = true
+      t.input.dir = 0
+      return false
+    }
     t.input.flatHeld = x > 88.5 && x < 92.8
     if (x > 97.4 && !t.p.isFlat()) {
       t.input.dir = 0
@@ -151,6 +180,7 @@ const c = record('3c', (t, f) => {
       return false
     }
     t.input.dir = 1
+    void snake
     return false
   }
   if (!sheet.isWaiting() && sheet.progress() < 1) {

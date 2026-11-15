@@ -8,7 +8,7 @@ import { Playback, tuningDrift } from '../src/game/Solutions.ts'
 import { level2 } from '../src/game/levels/level2.ts'
 import { level3 } from '../src/game/levels/level3.ts'
 import { STEP_HZ, TILE } from '../src/game/constants.ts'
-import { openRoom } from './solution-harness.mjs'
+import { blankInput, openRoom } from './solution-harness.mjs'
 
 const M = Math
 const out = []
@@ -100,9 +100,12 @@ for (const room of ['3a', '3b', '3c']) {
     GOALS[room](t),
     `replaying ${room}.json solves the room, ending at x${(t.p.x / TILE).toFixed(1)}`,
   )
+  // Enemies arrived in L3-7, so a room costing a hit is now normal. What
+  // matters is that it costs fewer than the three the player has: at three
+  // they die and the room restarts.
   record(
-    t.hits() === 0,
-    `taking ${t.hits()} hits on the way (nothing in Level 3 can hurt you yet)`,
+    t.hits() < 3,
+    `costing ${t.hits()} of the player's 3 hits`,
   )
 }
 
@@ -230,6 +233,14 @@ for (const room of ['3b', '3c']) {
   const back = t.level.respawnPoint()
   t.p.reset(back.x, back.y, t.level.solids)
   if (sol.swordOut !== undefined) t.level.setSwordOut(sol.swordOut)
+  // Everything openRoom() does after building the room, in the same order:
+  // a blank input, then one step. Both halves matter. Without the step the
+  // enemies sit one frame behind the fresh run and the whole encounter
+  // shifts - which looked exactly like a state leak until I compared the
+  // snake's x, 3090 against 3088. Without the blank, that step runs on the
+  // input the last run left held.
+  Object.assign(t.input, blankInput())
+  t.step()
   const again = new Playback(sol)
   const trace = []
   while (!again.done) {
@@ -303,6 +314,60 @@ for (const room of ['3b', '3c']) {
   record(
     !l2pieces.travels(),
     'so it does not travel until it is picked up - Level 2 is unchanged',
+  )
+}
+
+// =====================================================================
+//  3B's solution beats the snake rather than fighting it - and by how much.
+// =====================================================================
+//
+//  L3-6b made the snake dangerous and I expected this file to break. It did
+//  not: the route reaches the far side before the first attack can land. That
+//  is a thin thing to rely on, so the margin is pinned here - tune the snake
+//  faster and this fails loudly instead of the file quietly going stale.
+{
+  const sol = load('3b')
+  const t = openRoom(level3, sol.room)
+  if (sol.swordOut !== undefined) t.level.setSwordOut(sol.swordOut)
+  const snake = t.level.entities.byId('snake3b')
+  const play = new Playback(sol)
+  let noticedAt = -1
+  let f = 0
+  while (!play.done) {
+    play.apply(t.input)
+    t.step()
+    f++
+    if (noticedAt < 0 && snake.phase() !== 'patrol') noticedAt = f
+  }
+  const ends = f / STEP_HZ
+  record(
+    noticedAt > 0,
+    `the snake notices ${(noticedAt / STEP_HZ).toFixed(2)}s into the run`,
+  )
+  record(
+    t.hits() === 0,
+    `and the route is through in ${ends.toFixed(2)}s having taken ${t.hits()} hits`,
+  )
+  record(
+    snake.phase() !== 'patrol' && snake.venom() === null,
+    `with the snake still mid-telegraph at the end (${snake.phase()}), nothing spat`,
+  )
+
+  // How long the player would have had before the first hit, standing still.
+  t.input.dir = 0
+  let after = -1
+  for (let k = 0; k < 60 * 10; k++) {
+    t.step()
+    if (t.hits() > 0) {
+      after = k + 1
+      break
+    }
+  }
+  record(
+    after > 0,
+    after > 0
+      ? `standing still at the end, the first hit lands ${(after / STEP_HZ).toFixed(2)}s later - that is the margin`
+      : 'standing still at the end, nothing ever reaches the player',
   )
 }
 

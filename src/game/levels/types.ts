@@ -74,6 +74,10 @@ export type EntitySpec = {
   carried?: boolean
   /** How many panels a fold bridge is made of. */
   segments?: number
+  /** A patrolling enemy: where it lives, and the range it walks. */
+  homeX?: number
+  patrolFrom?: number
+  patrolTo?: number
   /**
    * Id of the seal holding this thing closed. It sits on the held object
    * and names the seal, which is the shape the spec's own data uses.

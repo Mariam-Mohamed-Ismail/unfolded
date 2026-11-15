@@ -128,13 +128,19 @@ const foot = (p) => p.y + p.halfH()
     'and it is held by the seal, resolved through heldBy',
   )
 
-  // The snake's place is left empty.
-  const sx = 70 * TILE
-  const busy = base.entities.all.some((e) => {
-    const b = e.hurtBox()
-    return b && sx > b.left - TILE && sx < b.right + TILE
-  })
-  record(!busy, "nothing hittable at the snake's home, x70")
+  // The snake now lives in the place 3B was holding for it. L3-6a filled
+  // it; this used to assert the space was empty.
+  const snake = base.entities.byId('snake3b')
+  record(!!snake, "3B's snake is built")
+  const sbox = snake.hurtBox()
+  record(
+    !!sbox && M.abs((sbox.left + sbox.right) / 2 - 70.5 * TILE) < TILE,
+    `sitting at x${((sbox.left + sbox.right) / 2 / TILE).toFixed(1)}, its home`,
+  )
+  record(
+    !!sbox && M.abs(sbox.bottom - base.surfaceY(8)) < 2,
+    'standing on the far floor at h8',
+  )
 }
 
 // =====================================================================
@@ -436,6 +442,91 @@ const foot = (p) => p.y + p.halfH()
   )
   const held = l2.entities.all.filter((e) => e.holder !== null)
   record(held.length === 0, 'nor is anything in Level 2 held by one')
+}
+
+// =====================================================================
+//  Step L3-7: a hit on the bridge throws you into the pit, not off the map.
+// =====================================================================
+{
+  // Open the bridge, stand on the deck, and take a hit from each side.
+  for (const [side, dir] of [['the left', 1], ['the right', -1]]) {
+    const t = room(50.6)
+    t.swing()
+    let f = 0
+    while (!t.seal.isCut() && f++ < 120) t.step()
+    while (!t.bridge.isOpen() && f++ < 300) t.step()
+    record(t.bridge.isOpen(), `with the bridge open (${side})`)
+
+    // Mid-deck, and hit from `dir`.
+    t.p.x = 61 * TILE
+    t.p.y = DECK - PLAYER_H / 2
+    t.step()
+    const x0 = t.p.x
+    t.p.hurt(dir)
+    for (let k = 0; k < 60 * 4; k++) t.step()
+
+    const landedPit = M.abs(foot(t.p) - PIT) < 3
+    const landedDeck = M.abs(foot(t.p) - DECK) < 3
+    record(
+      t.p.y < t.level.heightPx,
+      `hit from ${side}, the player is still inside the world`,
+    )
+    record(
+      landedPit || landedDeck,
+      landedPit
+        ? `and lands in the safe pit, ${(t.p.x - x0).toFixed(0)}px along`
+        : `and stays on the deck, ${(t.p.x - x0).toFixed(0)}px along`,
+    )
+    // And if they did fall in, they can get out again.
+    if (landedPit) {
+      t.input.dir = -1
+      let out = false
+      for (let k = 0; k < 60 * 6; k++) {
+        if (t.p.grounded) {
+          t.input.jumpPressed = true
+          t.input.jumpHeld = true
+        }
+        t.step()
+        if (t.p.grounded && M.abs(foot(t.p) - DECK) < 3) out = true
+      }
+      record(out, 'and can climb back out of it')
+    }
+  }
+}
+
+// --- the snake can attack from the deck it appeared on ---
+{
+  const t = room(50.6)
+  const snake = t.level.entities.byId('snake3b')
+  t.swing()
+  let f = 0
+  while (!t.seal.isCut() && f++ < 120) t.step()
+  while (!t.bridge.isOpen() && f++ < 300) t.step()
+
+  // Player mid-deck, facing right, so it prefers to come back behind them.
+  t.p.x = 62 * TILE
+  t.p.y = DECK - PLAYER_H / 2
+  t.input.dir = 1
+  for (let k = 0; k < 4; k++) t.step()
+  t.input.dir = 0
+
+  let onDeck = false
+  let attacked = false
+  for (let k = 0; k < 60 * 14; k++) {
+    t.step()
+    const at = snake.at()[0]
+    if (at > 56 * TILE && at < 66 * TILE && M.abs(snake.at()[1] - (DECK - 8)) < 24) {
+      onDeck = true
+    }
+    if (onDeck && (snake.phase() === 'spit' || snake.venom() !== null)) attacked = true
+  }
+  record(onDeck, 'the snake does come out onto the unfolded bridge')
+  record(
+    attacked,
+    attacked
+      ? 'and attacks from there, which is what makes the crossing a fight'
+      : 'but never attacks from there',
+  )
 }
 
 const nl = String.fromCharCode(10)

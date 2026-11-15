@@ -103,17 +103,25 @@ const up = (p) => FLOOR - foot(p)
     `one tile thick (${overhang?.h}px), so the floor is open underneath`,
   )
 
-  // The bat's place is left empty.
-  const ax = 9.5 * TILE
-  const ay = base.surfaceY(12)
-  const near = base.entities.all.some((e) => {
-    const b = e.hurtBox()
-    return b && ax > b.left - TILE && ax < b.right + TILE && ay > b.top - TILE && ay < b.bottom + TILE
-  })
-  record(!near, 'nothing hittable at the bat anchor, x9.5 h12')
+  // L3-7 filled the place this used to assert was empty.
+  const bat = base.entities.byId('bat3a')
+  record(!!bat, "3A's bat is built")
+  const bb = bat.hurtBox()
   record(
-    !base.solids.some((s) => ax > s.x && ax < s.x + s.w && ay > s.y && ay < s.y + s.h),
-    'and nothing solid there either',
+    !!bb && M.abs((bb.left + bb.right) / 2 - 9.5 * TILE) < TILE,
+    `hanging on the spec's anchor, x${((bb.left + bb.right) / 2 / TILE).toFixed(1)}`,
+  )
+  record(
+    !!bb && M.abs((bb.top + bb.bottom) / 2 - base.surfaceY(12)) <= 24,
+    'at h12, over the landing area',
+  )
+  // Its strip must not cap the fan: the column is x6-8 and the strip x8-11,
+  // so they are adjacent. Move the strip one tile left and 3A dies.
+  const strip = base.solids.find((sol) => sol.x === 8 * TILE)
+  record(!!strip, 'its ceiling strip runs x8-11')
+  record(
+    !!strip && strip.h < TILE / 2,
+    `a ${strip ? strip.h.toFixed(0) : '?'}px slab, something to hang from rather than stand on`,
   )
 }
 

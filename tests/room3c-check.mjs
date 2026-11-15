@@ -13,6 +13,8 @@ import {
   FIXED_DT,
   PLAYER_H,
   SHEET_PX,
+  SNAKE_NEAR_MAX,
+  SNAKE_NEAR_MIN,
   TILE,
 } from '../src/game/constants.ts'
 
@@ -52,10 +54,17 @@ function room(tileX, h = 0, armed = true, held = {}) {
   let slash = false
   // Level 3 carries no sword pickup of its own yet.
   level.swordOut = () => armed
+  // Damage wired as GameScene wires it: 3C has two enemies in it now.
+  let hurt = 0
   const step = () => {
     p.update(FIXED_DT, input, level.solids, level.updraftAt(p), sword.speedScale())
     level.update(FIXED_DT, p, r.fx)
     sword.update(FIXED_DT, p, slash, level, r.fx)
+    const from = level.dangerAt(level.boxOf(p))
+    if (from !== null) {
+      hurt++
+      p.hurt(M.sign(p.x - from) || 1)
+    }
     input.jumpPressed = false
     input.jumpReleased = false
     input.dashPressed = false
@@ -64,6 +73,7 @@ function room(tileX, h = 0, armed = true, held = {}) {
   step()
   return {
     level, p, input, sword, step, log: r.log,
+    hits: () => hurt,
     swing: () => { slash = true },
     seal: level.entities.byId('seal3c'),
     sheet: level.entities.byId('sheet3c'),
@@ -133,21 +143,26 @@ const up = (p) => SHAFT - foot(p)
     'and all of it is in room 3C',
   )
 
-  // Both enemies' places are left empty.
-  for (const [what, x, h] of [['snake home', 96, 0], ['bat anchor', 105.5, 18]]) {
-    const px = x * TILE
-    const py = base.surfaceY(h)
-    const busy = base.entities.all.some((e) => {
-      const b = e.hurtBox()
-      return b && px > b.left - TILE && px < b.right + TILE && py > b.top - TILE && py < b.bottom + TILE
-    })
-    record(!busy, `nothing hittable at the ${what}, x${x} h${h}`)
-  }
+  // L3-7 filled both places this used to assert were empty.
+  const snake = base.entities.byId('snake3c')
+  record(!!snake, "3C's snake is built")
   record(
-    !base.solids.some(
-      (s) => 105.5 * TILE > s.x && 105.5 * TILE < s.x + s.w && base.surfaceY(18) > s.y && base.surfaceY(18) < s.y + s.h,
-    ),
-    'and nothing solid at the bat anchor either',
+    M.abs(snake.at()[0] - 96.5 * TILE) < TILE,
+    `at its home, x${(snake.at()[0] / TILE).toFixed(1)}`,
+  )
+  const bat = base.entities.byId('bat3c')
+  record(!!bat, "and 3C's bat")
+  const bb = bat.hurtBox()
+  record(
+    !!bb && M.abs((bb.left + bb.right) / 2 - 105.5 * TILE) < TILE,
+    `on its anchor, x${((bb.left + bb.right) / 2 / TILE).toFixed(1)}`,
+  )
+  // The strip is adjacent to the fan's column (x102-104), not over it.
+  const strip = base.solids.find((sol) => sol.x === 104 * TILE)
+  record(!!strip, 'its ceiling strip runs x104-107')
+  record(
+    !!strip && strip.h < TILE / 2,
+    `a ${strip ? strip.h.toFixed(0) : '?'}px slab`,
   )
 }
 
@@ -477,6 +492,190 @@ const up = (p) => SHAFT - foot(p)
   record(
     flat.p.x > 93 * TILE,
     `you slide through to x${(flat.p.x / TILE).toFixed(1)}, into the snake arena`,
+  )
+}
+
+// =====================================================================
+//  Step L3-7: the enemies, and whether 3C is still fair.
+// =====================================================================
+
+// --- neither strip caps the fan it hangs beside ---
+{
+  const t = room(103)
+  t.sheet.trigger(0, 'unfold')
+  for (let f = 0; f < 60; f++) t.step()
+  const col = t.fan.column()
+  record(
+    M.abs(SHAFT - col.top - 16 * TILE) < 1,
+    `with the bat's strip at x104-107 in place, the column still reaches ${(SHAFT - col.top).toFixed(0)}px`,
+  )
+  // The margin: the strip starts exactly where the column ends.
+  const strip = t.level.solids.find((s) => s.x === 104 * TILE)
+  record(
+    !!strip && strip.x >= t.fan.column().right,
+    `the strip begins at x${strip ? strip.x / TILE : '?'} and the column ends at x${col.right / TILE} - adjacent, with nothing to spare`,
+  )
+}
+
+// --- the snake ignores a player flat in the slit, and rears as they emerge ---
+{
+  // Slide in from outside: spawning upright at x91 does not fit under a
+  // pillar with 14px of clearance, and the player gets pushed on top of it.
+  const t = room(88, 0, true, { flatHeld: true })
+  const snake = t.level.entities.byId('snake3c')
+  t.input.dir = 1
+  let walk = 0
+  while (t.p.x < 92 * TILE && walk++ < 60 * 10) t.step()
+  t.input.dir = 0
+  // Let it finish whatever the approach started - the player is only
+  // protected once they are actually hidden, not on the way in - and then
+  // measure from a settled snake.
+  let settle = 0
+  while ((snake.phase() !== 'patrol' || !t.snake0) && settle++ < 60 * 20) {
+    t.step()
+    if (snake.phase() === 'patrol' && settle > 60 * 6) t.snake0 = true
+  }
+  const hitsBefore = t.hits()
+  record(
+    t.p.isFlat() && t.p.x > 90 * TILE && t.p.x < 93.5 * TILE,
+    `folded flat inside 3C's slit, at x${(t.p.x / TILE).toFixed(1)}`,
+  )
+
+  let woken = false
+  for (let f = 0; f < 60 * 10; f++) {
+    t.step()
+    if (snake.phase() !== 'patrol') woken = true
+  }
+  record(
+    !woken,
+    `the snake never looks up for ten seconds while they stay hidden (${snake.phase()})`,
+  )
+  record(
+    t.hits() === hitsBefore,
+    `and never touches them (${t.hits() - hitsBefore} hits in that time)`,
+  )
+
+  // Come out: it starts to rear.
+  t.input.flatHeld = false
+  t.input.dir = 1
+  let woke = -1
+  for (let f = 0; f < 60 * 4; f++) {
+    t.step()
+    if (snake.phase() !== 'patrol' && woke < 0) woke = f
+  }
+  record(
+    woke >= 0,
+    woke >= 0
+      ? `coming out, it starts to rear ${(woke * FIXED_DT).toFixed(2)}s later`
+      : 'coming out, it never notices',
+  )
+}
+
+// --- the snake can end up inside 3C's column, which is why wind matters ---
+{
+  // It reappears 3 to 4 tiles from the player, and the player stands on the
+  // grille to ride - so the column is squarely inside its reach. The lift
+  // itself is measured in snake-check, on a floor built for it.
+  const t = room(103)
+  const snake = t.level.entities.byId('snake3c')
+  t.sheet.trigger(0, 'unfold')
+  for (let f = 0; f < 60; f++) t.step()
+  const col = t.fan.column()
+  const reach = [
+    t.p.x - SNAKE_NEAR_MAX * TILE,
+    t.p.x + SNAKE_NEAR_MAX * TILE,
+  ]
+  record(
+    reach[0] < col.right && reach[1] > col.left,
+    `standing on the grille, the snake's ${SNAKE_NEAR_MIN}-${SNAKE_NEAR_MAX} tile reappear range overlaps the column`,
+  )
+  void snake
+}
+
+// --- the bat alerts as the player rises, and its dive bends in the column ---
+{
+  const t = room(103)
+  const bat = t.level.entities.byId('bat3c')
+  t.sheet.trigger(0, 'unfold')
+  for (let f = 0; f < 60; f++) t.step()
+  record(bat.phase() === 'hang', 'the bat hangs while the player is on the floor')
+  let woke = -1
+  for (let f = 0; f < 60 * 8; f++) {
+    t.step()
+    if (bat.phase() !== 'hang' && woke < 0) {
+      woke = SHAFT - (t.p.y + t.p.halfH())
+      break
+    }
+  }
+  record(
+    woke > 0,
+    woke > 0
+      ? `and alerts as the player rises, at ${woke.toFixed(0)}px up`
+      : 'and never alerts',
+  )
+}
+
+// --- 3C is still beatable, and what it costs ---
+{
+  const t = room(77, 8)
+  const seal = t.level.entities.byId('seal3c')
+  const sheet = t.level.entities.byId('sheet3c')
+  const bat = t.level.entities.byId('bat3c')
+  const col = t.level.entities.byId('fan3c').column()
+  const mark = col.left + 1.1 * TILE
+  let dashed = false
+  let landed = false
+  let held = 0
+  let frames = 0
+  for (; frames < 60 * 60 && !t.level.finished(); frames++) {
+    const foot = t.p.y + t.p.halfH()
+    const up = SHAFT - foot
+    const x = t.p.x / TILE
+    t.input.dir = 0
+    t.input.flatHeld = false
+    if (frames === 2) t.input.swordPressed = true
+    if (t.p.grounded && foot <= HIGH + 1 && x > 108) landed = true
+
+    const bb = bat.hurtBox()
+    const close =
+      bb &&
+      M.hypot((bb.left + bb.right) / 2 - t.p.x, (bb.top + bb.bottom) / 2 - t.p.y) < 70
+    if (landed) {
+      t.input.dir = 1
+    } else if (bat.phase() === 'dive' && close && !t.p.isFlat()) {
+      t.swing()
+      t.input.dir = up > 400 ? 1 : 0
+    } else if (!seal.isCut()) {
+      const inSlit = x > 90.2 && x < 93.3
+      if (inSlit && held < 60) {
+        held++
+        t.input.flatHeld = true
+      } else {
+        t.input.flatHeld = x > 88.5 && x < 92.8
+        if (x > 97.4 && !t.p.isFlat()) t.swing()
+        else t.input.dir = 1
+      }
+    } else if (!sheet.isWaiting() && sheet.progress() < 1) {
+      t.input.dir = 0
+    } else if (t.p.grounded && up < 4) {
+      const d = mark - t.p.x
+      t.input.dir = M.abs(d) < 5 ? 0 : M.sign(d)
+    } else {
+      t.input.dir = up >= 440 ? 1 : 0
+      if (!dashed && up >= 512 && !t.p.grounded) {
+        t.input.dashPressed = true
+        dashed = true
+      }
+    }
+    t.step()
+  }
+  record(
+    t.level.finished(),
+    `3C is still beatable with both enemies live, in ${(frames / 60).toFixed(1)}s`,
+  )
+  record(
+    t.hits() < 3,
+    `costing ${t.hits()} of the player's 3 hits`,
   )
 }
 

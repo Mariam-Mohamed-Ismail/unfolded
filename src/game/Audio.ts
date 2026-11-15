@@ -31,6 +31,11 @@ import {
   SFX_CRINKLE_BURST_MS,
   SFX_CRINKLE_Q,
   SFX_CRINKLE_SPREAD_MS,
+  SFX_CRUMPLE_FROM_HZ,
+  SFX_CRUMPLE_GAIN,
+  SFX_CRUMPLE_MS,
+  SFX_CRUMPLE_Q,
+  SFX_CRUMPLE_TO_HZ,
   SFX_DASH_FROM_HZ,
   SFX_DASH_GAIN,
   SFX_DASH_MS,
@@ -44,16 +49,31 @@ import {
   SFX_JUMP_MS,
   SFX_JUMP_Q,
   SFX_JUMP_TO_HZ,
+  SFX_HISS_FROM_HZ,
+  SFX_HISS_GAIN,
+  SFX_HISS_MS,
+  SFX_HISS_Q,
+  SFX_HISS_TO_HZ,
   SFX_LAND_FROM_HZ,
   SFX_LAND_GAIN,
   SFX_LAND_MS,
   SFX_LAND_Q,
   SFX_LAND_TO_HZ,
+  SFX_POP_FROM_HZ,
+  SFX_POP_GAIN,
+  SFX_POP_MS,
+  SFX_POP_Q,
+  SFX_POP_TO_HZ,
   SFX_RESPAWN_FROM_HZ,
   SFX_RESPAWN_GAIN,
   SFX_RESPAWN_MS,
   SFX_RESPAWN_Q,
   SFX_RESPAWN_TO_HZ,
+  SFX_SPIT_FROM_HZ,
+  SFX_SPIT_GAIN,
+  SFX_SPIT_MS,
+  SFX_SPIT_Q,
+  SFX_SPIT_TO_HZ,
   SFX_STEP_GAIN,
   SFX_STEP_HZ,
   SFX_STEP_MS,
@@ -168,6 +188,50 @@ export class Audio {
       SFX_TEAR_MS,
       SFX_TEAR_Q,
       SFX_TEAR_GAIN,
+    )
+  }
+
+  /** The snake rearing: a long thin hiss. */
+  hiss(): void {
+    this.noiseHit(
+      SFX_HISS_FROM_HZ,
+      SFX_HISS_TO_HZ,
+      SFX_HISS_MS,
+      SFX_HISS_Q,
+      SFX_HISS_GAIN,
+    )
+  }
+
+  /** The snake folding itself away: a soft paper crumple. */
+  crumple(): void {
+    this.noiseHit(
+      SFX_CRUMPLE_FROM_HZ,
+      SFX_CRUMPLE_TO_HZ,
+      SFX_CRUMPLE_MS,
+      SFX_CRUMPLE_Q,
+      SFX_CRUMPLE_GAIN,
+    )
+  }
+
+  /** The venom leaving: a wet spit. */
+  spit(): void {
+    this.noiseHit(
+      SFX_SPIT_FROM_HZ,
+      SFX_SPIT_TO_HZ,
+      SFX_SPIT_MS,
+      SFX_SPIT_Q,
+      SFX_SPIT_GAIN,
+    )
+  }
+
+  /** The snake arriving: a short upward pop. */
+  pop(): void {
+    this.noiseHit(
+      SFX_POP_FROM_HZ,
+      SFX_POP_TO_HZ,
+      SFX_POP_MS,
+      SFX_POP_Q,
+      SFX_POP_GAIN,
     )
   }
 

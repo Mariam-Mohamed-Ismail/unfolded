@@ -9,7 +9,7 @@ import { Slit } from '../src/game/entities/Slit.ts'
 import { level1 } from '../src/game/levels/level1.ts'
 import { level2 } from '../src/game/levels/level2.ts'
 import {
-  BAT_COVER_PX,
+  COVER_PX,
   BAT_H,
   BAT_RANGE_Y,
   FLAT_MAX_SPEED,
@@ -484,7 +484,7 @@ const foot = (p) => p.y + p.halfH()
     (s) => s.x === slit.x && s.y + s.h < base.surfaceY(0),
   )
   record(
-    !!pillar && box.top - (pillar.y + pillar.h) <= BAT_COVER_PX,
+    !!pillar && box.top - (pillar.y + pillar.h) <= COVER_PX,
     `and is also covered, with the pillar ${pillar ? (box.top - (pillar.y + pillar.h)).toFixed(0) : '?'}px overhead`,
   )
 

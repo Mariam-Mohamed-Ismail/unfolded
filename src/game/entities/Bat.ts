@@ -2,6 +2,7 @@ import type * as Phaser from 'phaser'
 import { Enemy } from './Enemy.ts'
 import { drawTag, drawTagText, tagBox } from '../ui/tag.ts'
 import { mixColor, rotAbout } from '../geom.ts'
+import { hiding } from './hiding.ts'
 import type { Box, EntityContext, EntitySnapshot, EntityWorld } from './Entity.ts'
 import type { EntitySpec } from '../levels/types.ts'
 import type { Point } from '../geom.ts'
@@ -9,7 +10,6 @@ import type { Solid } from '../Player.ts'
 import {
   BAT_ALERT_S,
   BAT_COOLDOWN_S,
-  BAT_COVER_PX,
   BAT_DIVE_SAMPLES,
   BAT_DIVE_SPEED,
   BAT_FLAP_DEG,
@@ -207,8 +207,9 @@ export class Bat extends Enemy<BatState> {
     // "A player who is flat inside a slit is ignored, so nobody gets
     // attacked while stuck." Read as geometry rather than as a reference to
     // Slit: flat, with something solid just overhead. Flat in the open is
-    // still fair game.
-    if (world.player.flat && covered(p, world.solids)) return false
+    // still fair game. Shared with the snake, which asks the same question
+    // about the floor it is thinking of reappearing on.
+    if (hiding(p, world.player.flat, world.solids)) return false
     return true
   }
 
@@ -447,17 +448,3 @@ function hitsAny(box: Box, solids: readonly Solid[]): boolean {
   return false
 }
 
-/**
- * Is there something solid just above this box? Every solid in this game
- * runs from its top surface downward, so a floor's underside is far below
- * and only a slab — a slit's pillar — can answer yes.
- */
-function covered(box: Box, solids: readonly Solid[]): boolean {
-  for (const s of solids) {
-    if (s.x >= box.right || s.x + s.w <= box.left) continue
-    const gap = box.top - (s.y + s.h)
-    // Slightly negative counts: a player flat in a slit fills the gap exactly.
-    if (gap >= -2 && gap <= BAT_COVER_PX) return true
-  }
-  return false
-}

@@ -147,7 +147,7 @@ const base = new Level(level3)
     `the drop off the ledge is ${ledge && shaft ? (shaft.y - ledge.y) / TILE : '?'} tiles`,
   )
   record(
-    level3.solids.length === 11,
+    level3.solids.length === 13,
     `${level3.solids.length} solids in the data, all three rooms' geometry`,
   )
   // More once built: things that add their own collision do it on
@@ -157,7 +157,7 @@ const base = new Level(level3)
   // construction - two closed sheets, two slit pillars, two uncut seals.
   // The folded bridge adds none, which is the point of it being folded.
   record(
-    base.solids.length === 17,
+    base.solids.length === 19,
     `and ${base.solids.length} in the built level, the extra six from the sheets, pillars and seals`,
   )
 }

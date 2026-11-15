@@ -66,6 +66,12 @@ export const level3: LevelData = {
     // the timed switch sits in its shade and the ledge above is the way on.
     // 256px up against an 82.5px jump, so only the draught reaches it.
     { x: 12, w: 24, h: 8, bottomH: 7 },
+    // 3A's bat strip, tiles 8 to 11, over the landing area.
+    //
+    // It begins exactly where the fan's column ends - the column is x6-8 -
+    // so it does not cap the draught. That is luck, not design: move this
+    // one tile left and 3A stops working. room3a-check pins it.
+    { x: 8, w: 3, h: 12.25, bottomH: 12 },
     // Room 3B is a raised block rather than a floor with steps, cut by the
     // gap the bridge spans: approach, pit, far side.
     { x: 36, w: 20, h: 8 },
@@ -85,6 +91,10 @@ export const level3: LevelData = {
     { x: 108, w: 12, h: 14 },
     // The block over 3C's seal, so six tiles of tape cannot be jumped.
     { x: 99, w: 1, h: 8, bottomH: 6 },
+    // 3C's bat strip, tiles 104 to 107, over the platform's edge. Same
+    // lucky adjacency as 3A's: the fan's column is x102-104, so this
+    // begins where the column ends and does not cap it.
+    { x: 104, w: 3, h: 18.25, bottomH: 18 },
   ],
 
   entities: [
@@ -109,6 +119,10 @@ export const level3: LevelData = {
     { id: 'sheet3a', type: 'FoldSheet', x: 4, w: 6, h: 5 },
     { id: 'tsw3a', type: 'TimedSwitch', x: 22, h: 0,
       targets: ['sheet3a'], duration: 7 },
+    // The bat, on its strip over the landing area. It alerts as the
+    // player rises in the freed draught, and its dive bends in the
+    // column - which is the whole reason 3A has one.
+    { id: 'bat3a', type: 'Bat', x: 9, w: 1, h: 12 },
 
     { id: 'cp3b', type: 'Checkpoint', x: 37, h: 8 },
 
@@ -125,6 +139,11 @@ export const level3: LevelData = {
     { id: 'seal3b', type: 'Seal', x: 52, floorH: 8, topH: 16 },
     { id: 'bridge3b', type: 'FoldBridge', x: 56, w: 10, topH: 8,
       segments: 5, heldBy: 'seal3b' },
+    // The test snake, in the place 3B has been holding for it. It
+    // telegraphs and teleports but cannot hurt you yet: contact damage,
+    // venom and the first-hit stagger are the second half.
+    { id: 'snake3b', type: 'Snake', x: 70, h: 8, homeX: 70,
+      patrolFrom: 67, patrolTo: 75, floorH: 8 },
     // 3C has two: one at the room's entrance on the ledge, and one on the
     // landing at the bottom of the drop so a reset does not send the player
     // back through 3B.
@@ -153,6 +172,13 @@ export const level3: LevelData = {
     { id: 'seal3c', type: 'Seal', x: 99, floorH: 0, topH: 6 },
     { id: 'sheet3c', type: 'FoldSheet', x: 100, w: 6, h: 9, heldBy: 'seal3c' },
     { id: 'fan3c', type: 'Fan', x: 102, w: 2, floorH: 0, columnH: 16 },
+    // The snake in the arena past the slit: it ignores a player who is
+    // flat inside the pillar and rears as they come out.
+    { id: 'snake3c', type: 'Snake', x: 96, h: 0, homeX: 96,
+      patrolFrom: 94, patrolTo: 98, floorH: 0 },
+    // The bat over the platform edge, which the ride up the 16-tile
+    // column passes on the way.
+    { id: 'bat3c', type: 'Bat', x: 105, w: 1, h: 18 },
     { id: 'exit3', type: 'ExitDoor', x: 118, h: 14 },
   ],
 
